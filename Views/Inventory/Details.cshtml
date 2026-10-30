@@ -1,0 +1,817 @@
+@model inventory_management.Models.InventoryItemDetailsViewModel
+@{
+    ViewData["Title"] = Model.Title.Length > 50 ? Model.Title[..47] + "…" : Model.Title;
+}
+
+<div class="page-header page-header-flex mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-action="ActiveInventory">Inventory</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Item details</li>
+        </ol>
+    </nav>
+    <div class="page-header-actions">
+        <a asp-action="ActiveInventory" class="btn btn-outline-secondary btn-sm">← Back to inventory</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-4 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                @if (!string.IsNullOrWhiteSpace(Model.CoverPhotoUrl))
+                {
+                    <img src="@Model.CoverPhotoUrl" alt="Cover" class="rounded img-fluid mb-3" style="max-height:280px;object-fit:contain;" />
+                }
+                else
+                {
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center mb-3" style="height:200px;">
+                        <span class="text-muted">No image</span>
+                    </div>
+                }
+                <h1 class="h5 fw-bold mb-2" style="word-break:break-word;">@Model.Title</h1>
+                <div class="small text-muted mb-2">Item ID: <span class="font-monospace">@Model.ItemId</span></div>
+                @if (Model.IsActive)
+                {
+                    <span class="badge bg-success">Active</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Inactive</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8 col-xl-9">
+        <div class="row g-4">
+            <div class="col-12 col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Listing info</h2>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0 small">
+                            <dt class="col-5 text-muted">Listed</dt>
+                            <dd class="col-7">@Model.ListedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</dd>
+                            <dt class="col-5 text-muted">Last seen</dt>
+                            <dd class="col-7">@Model.LastSeenAtUtc.ToLocalTime().ToString("MMM d, yyyy")</dd>
+                            @if (Model.InactivatedAtUtc.HasValue)
+                            {
+                                <dt class="col-5 text-muted">Inactivated</dt>
+                                <dd class="col-7">@Model.InactivatedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy")</dd>
+                            }
+                            <dt class="col-5 text-muted">Barcode</dt>
+                            <dd class="col-7 font-monospace">@Model.Barcode</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.EbayDetails != null)
+            {
+                <div class="col-12 col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex align-items-center gap-2 flex-wrap">
+                            <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">eBay listing</h2>
+                            @if (Model.EbayDetails.IsBuyItNow)
+                            {
+                                <span class="badge bg-success">Buy It Now</span>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(Model.EbayDetails.ListingType))
+                            {
+                                <span class="badge bg-warning text-dark">Auction</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrWhiteSpace(ViewData["EbayPriceSuccess"] as string ?? TempData["EbayPriceSuccess"] as string))
+                            {
+                                <div class="alert alert-success py-1 px-2 small mb-2">@(TempData["EbayPriceSuccess"])</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(TempData["EbayPriceError"] as string))
+                            {
+                                <div class="alert alert-danger py-1 px-2 small mb-2">@(TempData["EbayPriceError"])</div>
+                            }
+                            <dl class="row mb-0 small">
+                                @if (Model.EbayDetails.CurrentPrice.HasValue)
+                                {
+                                    <dt class="col-5 text-muted">Current price</dt>
+                                    <dd class="col-7 fw-semibold">@(Model.EbayDetails.CurrencyId ?? "USD") @Model.EbayDetails.CurrentPrice.Value.ToString("N2")</dd>
+                                }
+                                @if (Model.EbayDetails.Quantity.HasValue)
+                                {
+                                    <dt class="col-5 text-muted">Quantity</dt>
+                                    <dd class="col-7">@Model.EbayDetails.Quantity</dd>
+                                }
+                                @if (Model.EbayDetails.QuantitySold.HasValue && Model.EbayDetails.QuantitySold > 0)
+                                {
+                                    <dt class="col-5 text-muted">Sold</dt>
+                                    <dd class="col-7">@Model.EbayDetails.QuantitySold</dd>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(Model.EbayDetails.ConditionDisplayName))
+                                {
+                                    <dt class="col-5 text-muted">Condition</dt>
+                                    <dd class="col-7">@Model.EbayDetails.ConditionDisplayName</dd>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(Model.EbayDetails.ListingStatus))
+                                {
+                                    <dt class="col-5 text-muted">Status</dt>
+                                    <dd class="col-7">@Model.EbayDetails.ListingStatus</dd>
+                                }
+                            </dl>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @if (!string.IsNullOrWhiteSpace(Model.EbayDetails.ViewItemUrl))
+                                {
+                                    <a href="@Model.EbayDetails.ViewItemUrl" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">View on eBay</a>
+                                }
+                            </div>
+                            @if (Model.EbayDetails.IsBuyItNow)
+                            {
+                                <div class="mt-3 pt-3 border-top">
+                                    <div class="small fw-semibold text-muted mb-2 text-uppercase">Update price</div>
+                                    <form asp-action="UpdatePrice" method="post" id="detailsPriceForm" class="d-flex gap-2 align-items-center flex-wrap"
+                                          data-purchase-cost="@(Model.OwnershipType == "Owned" ? Model.PurchaseCost?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) : null)">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="itemId" value="@Model.ItemId" />
+                                        <input type="hidden" name="oldPrice" value="@Model.EbayDetails.CurrentPrice?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" />
+                                        <div class="input-group input-group-sm" style="max-width:180px;">
+                                            <span class="input-group-text">@(Model.EbayDetails.CurrencyId ?? "USD")</span>
+                                            <input type="number" name="newPrice" id="detailsPriceInput" class="form-control" step="0.01" min="0.01"
+                                                   value="@Model.EbayDetails.CurrentPrice?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+                                                   required placeholder="0.00" />
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">Save to eBay</button>
+                                        @if (Model.OwnershipType == "Owned" && Model.PurchaseCost.HasValue)
+                                        {
+                                            <span class="small fw-semibold" id="detailsMarginReadout" aria-live="polite"></span>
+                                        }
+                                    </form>
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(Model.EbayDetails.ListingType))
+                            {
+                                <p class="small text-muted mt-2 mb-0">Price editing is only available for Buy It Now listings.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Classification</h2>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrWhiteSpace(TempData["InventorySuccess"] as string))
+                        {
+                            <div class="alert alert-success py-1 px-2 small mb-2">@(TempData["InventorySuccess"])</div>
+                        }
+                        @if (Model.OwnershipType == "Owned")
+                        {
+                            <p class="mb-2">
+                                <span class="badge bg-primary">Owned</span>
+                                @if (Model.PurchaseCost.HasValue)
+                                {
+                                    <span class="small text-muted ms-2">Purchase cost: $@Model.PurchaseCost.Value.ToString("N2")</span>
+                                }
+                            </p>
+                        }
+                        else if (Model.OwnershipType == "Consignment")
+                        {
+                            <p class="mb-2">
+                                <span class="badge bg-info text-dark">Consignment</span>
+                                <span class="small text-muted ms-2">
+                                    @(Model.ConsignorName ?? "Unknown consignor") — @(Model.ConsignmentSplitPercent?.ToString("0.##") ?? "?")% goes to them
+                                </span>
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="mb-2 text-warning small fw-semibold">Not yet classified — pick one below.</p>
+                        }
+
+                        <div class="d-flex gap-2 flex-wrap mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="detailsOwnedToggleBtn">Set Owned</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="detailsConsignmentToggleBtn">Set Consignment</button>
+                        </div>
+
+                        <form asp-action="ClassifyOwned" method="post" id="detailsOwnedForm" class="d-none d-flex gap-2 align-items-center flex-wrap">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="itemId" value="@Model.ItemId" />
+                            <span class="small text-muted">Purchase cost (0 if free / already owned)</span>
+                            <div class="input-group input-group-sm" style="max-width:140px;">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="purchaseCost" id="detailsPurchaseCostInput" class="form-control" step="0.01" min="0"
+                                       value="@Model.PurchaseCost?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" placeholder="0.00" />
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                        </form>
+
+                        <form asp-action="ClassifyConsignment" method="post" id="detailsConsignmentForm" class="d-none d-flex gap-2 align-items-center flex-wrap">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="itemId" value="@Model.ItemId" />
+                            @if (Model.ConsignorOptions.Any())
+                            {
+                                <select name="consignorId" class="form-select form-select-sm" style="max-width:240px;">
+                                    @foreach (var opt in Model.ConsignorOptions)
+                                    {
+                                        <option value="@opt.Id" selected="@(opt.Name == Model.ConsignorName)">@opt.Name (@opt.DefaultSplitPercent.ToString("0.##")% to them)</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                            }
+                            else
+                            {
+                                <span class="small text-muted">No consignors yet — <a asp-controller="Consignors" asp-action="Index">add one first</a>.</span>
+                            }
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Storage</h2>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.Storage != null)
+                        {
+                            if (Model.Storage.IsBox && Model.Storage.BoxId.HasValue)
+                            {
+                                <p class="mb-2">@Model.Storage.DisplayText</p>
+                                <a asp-controller="Box" asp-action="Details" asp-route-id="@Model.Storage.BoxId" class="btn btn-outline-primary btn-sm">View box</a>
+                            }
+                            else if (Model.Storage.ShelfUnitId.HasValue)
+                            {
+                                <p class="mb-2">@Model.Storage.DisplayText</p>
+                                <a asp-controller="Shelf" asp-action="Details" asp-route-id="@Model.Storage.ShelfUnitId" class="btn btn-outline-primary btn-sm">View shelf unit</a>
+                            }
+                            else
+                            {
+                                <p class="mb-0">@Model.Storage.DisplayText</p>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">No storage location assigned.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Units</h2>
+                        <form asp-action="AddBackstockUnit" method="post" class="add-backstock-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="itemId" value="@Model.ItemId" />
+                            <button type="submit" class="btn btn-sm btn-outline-warning">Add backstock unit</button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        @* Every listing has at least unit 1 (reusing the listing's own Barcode
+                           above). This table only really matters once there's more than one
+                           unit — quantity &gt; 1 or backstock — since each has its own barcode
+                           and location. *@
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Barcode</th>
+                                        <th>Status</th>
+                                        <th>Location</th>
+                                        <th>Printed</th>
+                                        <th>Sold</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var unit in Model.Units)
+                                    {
+                                        <tr class="unit-row" data-unit-id="@unit.UnitId">
+                                            <td>@unit.UnitIndex</td>
+                                            <td class="font-monospace small">@unit.Barcode</td>
+                                            <td>
+                                                @if (unit.Status == "Backstock")
+                                                {
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis border">Backstock</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success-subtle text-success-emphasis border">Listed</span>
+                                                }
+                                            </td>
+                                            <td class="small">@unit.LocationDisplay</td>
+                                            <td class="small unit-printed-cell">@(unit.LabelPrintedAtUtc.HasValue ? unit.LabelPrintedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy") : "Not printed")</td>
+                                            <td class="small">@(unit.IsSold ? "Sold" : "—")</td>
+                                            <td class="text-end">
+                                                <div class="d-flex gap-1 justify-content-end">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-dark unit-print-btn"
+                                                            data-barcode="@unit.Barcode"
+                                                            data-unit-id="@unit.UnitId"
+                                                            data-item-title="@Model.Title (unit @unit.UnitIndex)">
+                                                        Print QR Code
+                                                    </button>
+                                                    @if (unit.Status == "Backstock" && !unit.IsSold)
+                                                    {
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-danger unit-delete-btn"
+                                                                data-unit-id="@unit.UnitId">
+                                                            Delete
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Recent orders</h2>
+                        @if (Model.RecentOrders.Any())
+                        {
+                            <span class="small text-muted">@Model.RecentOrders.Count order@(Model.RecentOrders.Count != 1 ? "s" : "")</span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (Model.UnsoldOrderUnitOptions.Any())
+                        {
+                            @* A sale landed but eBay never says which physical unit it was —
+                               more than one unsold unit is still a candidate. Works regardless
+                               of shipped status, unlike the old Ready to Ship-only picker. *@
+                            <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-3" id="detailsUnitPick" data-item-id="@Model.ItemId">
+                                <div class="fw-semibold small me-1">Which unit sold?</div>
+                                <select class="form-select form-select-sm detailsUnitPickSelect" style="max-width:260px;">
+                                    @foreach (var opt in Model.UnsoldOrderUnitOptions)
+                                    {
+                                        <option value="@opt.UnitId">@opt.LocationDisplay (@opt.Barcode)</option>
+                                    }
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-warning detailsUnitPickConfirmBtn">Confirm</button>
+                                <span class="small text-muted detailsUnitPickStatus"></span>
+                            </div>
+                        }
+                        @if (!Model.RecentOrders.Any())
+                        {
+                            <p class="text-muted mb-0 small">No orders for this item.</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Order ID</th>
+                                            <th>Buyer</th>
+                                            <th>Qty</th>
+                                            <th>Date</th>
+                                            <th>Tracking</th>
+                                            <th>Retrieved</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var o in Model.RecentOrders)
+                                        {
+                                            <tr>
+                                                <td class="font-monospace small">@o.OrderId</td>
+                                                <td>@o.BuyerName</td>
+                                                <td>@o.Quantity</td>
+                                                <td>@(o.OrderCreatedAtUtc?.ToLocalTime().ToString("MMM d, yyyy") ?? "—")</td>
+                                                <td>@(o.HasTracking ? "Yes" : "—")</td>
+                                                <td>@(o.IsRetrieved ? "Yes" : "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Price Change History</h2>
+                        @if (Model.AttentionIgnoredPermanently)
+                        {
+                            <span class="badge bg-secondary">Ignored permanently on Needs Attention</span>
+                        }
+                        else if (Model.AttentionIgnoredUntilUtc.HasValue && Model.AttentionIgnoredUntilUtc.Value > DateTime.UtcNow)
+                        {
+                            <span class="badge bg-secondary">Ignored on Needs Attention until @Model.AttentionIgnoredUntilUtc.Value.ToLocalTime().ToString("MMM d, yyyy")</span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (Model.AttentionIgnoredPermanently || (Model.AttentionIgnoredUntilUtc.HasValue && Model.AttentionIgnoredUntilUtc.Value > DateTime.UtcNow))
+                        {
+                            <form asp-action="UnignoreAttention" method="post" class="mb-3">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="itemId" value="@Model.ItemId" />
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Stop ignoring on Needs Attention</button>
+                            </form>
+                        }
+                        @if (Model.PriceReductionHistory.Count > 0)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                            <th>Change</th>
+                                            <th>Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var h in Model.PriceReductionHistory)
+                                        {
+                                            var diff = h.NewPrice - h.OldPrice;
+                                            var changeClass = diff < 0 ? "text-danger" : (diff > 0 ? "text-success" : "text-muted");
+                                            var changeSign = diff < 0 ? "−" : (diff > 0 ? "+" : "");
+                                            <tr>
+                                                <td class="small">@h.ReducedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                                <td class="small">$@h.OldPrice.ToString("N2")</td>
+                                                <td class="small">$@h.NewPrice.ToString("N2")</td>
+                                                <td class="small @changeClass">@changeSign$@Math.Abs(diff).ToString("N2")</td>
+                                                <td class="small">
+                                                    @if (h.ChangeType == "Manual")
+                                                    {
+                                                        <span class="badge bg-primary">Manual</span>
+                                                    }
+                                                    else if (h.ChangeType == "External")
+                                                    {
+                                                        <span class="badge bg-info text-dark">External (eBay)</span>
+                                                    }
+                                                    else if (h.ChangeType == "Bulk")
+                                                    {
+                                                        <span class="badge bg-warning text-dark">Bulk</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Auto</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="small text-muted mb-0">No price changes recorded yet.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @{
+                var isBuyItNow = Model.ListingType is "FixedPriceItem" or "StoresFixedPrice";
+            }
+            @if (isBuyItNow || Model.RelistHistory.Count > 0)
+            {
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Auto End &amp; Relist</h2>
+                        @if (Model.AutoRelistEnabled && isBuyItNow)
+                        {
+                            <span class="badge bg-success">Enabled</span>
+                        }
+                        else if (!isBuyItNow && Model.ListingType != null)
+                        {
+                            <span class="badge bg-secondary">Auction — not applicable</span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrWhiteSpace(TempData["RelistSuccess"] as string))
+                        {
+                            <div class="alert alert-success py-1 px-2 small mb-3">@TempData["RelistSuccess"]</div>
+                        }
+
+                        <dl class="row mb-0 small mb-3">
+                            <dt class="col-5 text-muted">Current Item ID</dt>
+                            <dd class="col-7 font-monospace">@Model.ItemId</dd>
+                            @if (Model.ListingEndTimeUtc.HasValue)
+                            {
+                                <dt class="col-5 text-muted">Listing ends</dt>
+                                <dd class="col-7">@Model.ListingEndTimeUtc.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</dd>
+                            }
+                            @if (Model.AutoRelistEnabled && isBuyItNow)
+                            {
+                                if (Model.ListingEndTimeUtc.HasValue)
+                                {
+                                    var nextRelist = Model.ListingEndTimeUtc.Value.AddHours(-24);
+                                    var relistIsPast = nextRelist <= DateTime.UtcNow;
+                                    <dt class="col-5 text-muted">Next relist</dt>
+                                    <dd class="col-7 @(relistIsPast ? "text-warning fw-semibold" : "")">
+                                        @nextRelist.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                                        @if (relistIsPast) { <span class="ms-1">(overdue)</span> }
+                                    </dd>
+                                }
+                                else
+                                {
+                                    <dt class="col-5 text-muted">Next relist</dt>
+                                    <dd class="col-7 text-muted">Sync with eBay to see date</dd>
+                                }
+                            }
+                        </dl>
+
+                        @if (isBuyItNow)
+                        {
+                            <form asp-action="ToggleAutoRelist" method="post" class="mb-3">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="itemId" value="@Model.ItemId" />
+                                <input type="hidden" name="enabled" value="@(!Model.AutoRelistEnabled ? "true" : "false")" />
+                                <button type="submit" class="btn btn-sm @(Model.AutoRelistEnabled ? "btn-outline-danger" : "btn-outline-success")">
+                                    @(Model.AutoRelistEnabled ? "Disable auto end & relist" : "Enable auto end & relist")
+                                </button>
+                            </form>
+                            @if (Model.AutoRelistEnabled)
+                            {
+                                <p class="small text-muted mb-3">When 24 hours remain on this listing, it will be automatically ended and relisted with identical settings.</p>
+                            }
+                        }
+
+                        @if (Model.RelistHistory.Count > 0)
+                        {
+                            <div class="small fw-semibold text-muted text-uppercase mb-2">Relist history</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Old Item ID</th>
+                                            <th>New Item ID</th>
+                                            <th>Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var h in Model.RelistHistory)
+                                        {
+                                            <tr>
+                                                <td class="small">@h.RelistedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                                <td class="font-monospace small">@h.OldItemId</td>
+                                                <td class="font-monospace small">@(h.NewItemId ?? "—")</td>
+                                                <td>
+                                                    @if (string.IsNullOrWhiteSpace(h.ErrorMessage))
+                                                    {
+                                                        <span class="badge bg-success">OK</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger" title="@h.ErrorMessage">Failed</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else if (!isBuyItNow)
+                        {
+                            <p class="small text-muted mb-0">Auto end &amp; relist only applies to Buy It Now listings.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+            }
+
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-0">
+                        <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Actions</h2>
+                    </div>
+                    <div class="card-body d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="viewBarcodeBtn" data-barcode="@Model.Barcode">View QR code</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="printBarcodeBtn" data-barcode="@Model.Barcode" data-item-title="@Model.Title">Print QR code</button>
+@if (Model.Storage != null)
+                        {
+                            <form asp-action="RemoveFromStorage" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="ItemId" value="@Model.ItemId" />
+                                <input type="hidden" name="ItemTitle" value="@Model.Title" />
+                                <input type="hidden" name="returnAction" value="ActiveInventory" />
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this item from storage? It will appear in Missing Location.');">Remove from storage</button>
+                            </form>
+                        }
+                    </div>
+                    <div id="barcodeOutput" class="card-body border-top d-none">
+                        <div class="small text-muted mb-1 barcode-number"></div>
+                        <img class="listing-barcode" alt="QR Code" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <script src="~/js/barcode-print.js" asp-append-version="true"></script>
+    <script src="~/js/margin-calculator.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            const priceForm = document.getElementById("detailsPriceForm");
+            const priceInput = document.getElementById("detailsPriceInput");
+            const marginReadout = document.getElementById("detailsMarginReadout");
+            if (priceForm && priceInput && marginReadout) {
+                const update = function () { window.InventoryMargin.updateReadout(priceForm, priceInput, marginReadout); };
+                priceInput.addEventListener("input", update);
+                update();
+
+                priceForm.addEventListener("submit", function (e) {
+                    const costAttr = priceForm.getAttribute("data-purchase-cost");
+                    if (costAttr === null || costAttr === "") return;
+                    const margin = window.InventoryMargin.compute(parseFloat(priceInput.value), parseFloat(costAttr));
+                    if (margin && margin.marginPercent <= 0) {
+                        const confirmed = confirm(
+                            "This price gives a margin of " + margin.marginPercent.toFixed(1) +
+                            "% (at or below your cost). Save it anyway?");
+                        if (!confirmed) e.preventDefault();
+                    }
+                });
+            }
+
+            const ownedToggleBtn = document.getElementById("detailsOwnedToggleBtn");
+            const consignmentToggleBtn = document.getElementById("detailsConsignmentToggleBtn");
+            const ownedForm = document.getElementById("detailsOwnedForm");
+            const consignmentForm = document.getElementById("detailsConsignmentForm");
+            const purchaseCostInput = document.getElementById("detailsPurchaseCostInput");
+
+            // Leaving the cost box empty (including just pressing Enter with nothing typed)
+            // assumes $0, rather than blocking submission — $0 is a legitimate purchase cost
+            // (free item, or already owned). Filled in right before submit so the value the
+            // server actually receives is always an explicit "0", never a blank field.
+            if (ownedForm && purchaseCostInput) {
+                ownedForm.addEventListener("submit", function () {
+                    if (purchaseCostInput.value.trim() === "") {
+                        purchaseCostInput.value = "0";
+                    }
+                });
+            }
+            if (ownedToggleBtn && ownedForm && consignmentForm) {
+                ownedToggleBtn.addEventListener("click", function () {
+                    ownedForm.classList.remove("d-none");
+                    consignmentForm.classList.add("d-none");
+                });
+            }
+            if (consignmentToggleBtn && ownedForm && consignmentForm) {
+                consignmentToggleBtn.addEventListener("click", function () {
+                    consignmentForm.classList.remove("d-none");
+                    ownedForm.classList.add("d-none");
+                });
+            }
+        })();
+    </script>
+    <script>
+
+        (function () {
+            const viewBtn = document.getElementById("viewBarcodeBtn");
+            const printBtn = document.getElementById("printBarcodeBtn");
+            const barcodeOutput = document.getElementById("barcodeOutput");
+            const barcodeNumberEl = barcodeOutput?.querySelector(".barcode-number");
+            const barcodeCanvas = barcodeOutput?.querySelector(".listing-barcode");
+
+            if (viewBtn && barcodeOutput && barcodeCanvas) {
+                viewBtn.addEventListener("click", function () {
+                    const barcode = viewBtn.dataset.barcode || "";
+                    if (!barcode) return;
+                    if (barcodeOutput.classList.contains("d-none")) {
+                        barcodeNumberEl.textContent = barcode;
+                        QRCode.toDataURL(barcode, { errorCorrectionLevel: "M", width: 120, margin: 2 }).then(function (url) { barcodeCanvas.src = url; }).catch(console.error);
+                        barcodeOutput.classList.remove("d-none");
+                        viewBtn.textContent = "Hide QR code";
+                    } else {
+                        barcodeOutput.classList.add("d-none");
+                        viewBtn.textContent = "View QR code";
+                    }
+                });
+            }
+
+            if (printBtn) {
+                printBtn.addEventListener("click", function () {
+                    const barcode = printBtn.dataset.barcode || "";
+                    if (!barcode) return;
+                    window.InventoryBarcodePrint.openBarcodePrintWindow(barcode);
+                });
+            }
+
+            // ── Per-unit "Print QR Code" (Units table) ─────────────────────────
+            const unitCsrfToken = document.querySelector('form[action$="/Inventory/AddBackstockUnit"] input[name="__RequestVerificationToken"]')?.value || "";
+
+            document.addEventListener("click", function (event) {
+                const btn = event.target instanceof Element ? event.target.closest(".unit-print-btn") : null;
+                if (!btn) return;
+
+                const barcode = btn.dataset.barcode || "";
+                const unitId = btn.dataset.unitId || "";
+                const title = btn.dataset.itemTitle || "";
+                if (!barcode || !unitId) return;
+
+                window.InventoryBarcodePrint.openBarcodePrintWindow(barcode, title);
+
+                fetch(appUrl("/Inventory/MarkLabelPrinted"), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": unitCsrfToken
+                    },
+                    body: JSON.stringify({ unitIds: [unitId] })
+                }).then(function () {
+                    const row = btn.closest(".unit-row");
+                    const printedCell = row?.querySelector(".unit-printed-cell");
+                    if (printedCell) {
+                        printedCell.textContent = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+                    }
+                }).catch(console.error);
+            });
+
+            // ── Per-unit "Delete" (backstock only, Units table) ────────────────
+            document.addEventListener("click", function (event) {
+                const btn = event.target instanceof Element ? event.target.closest(".unit-delete-btn") : null;
+                if (!btn) return;
+
+                const unitId = btn.dataset.unitId || "";
+                if (!unitId) return;
+                if (!confirm("Delete this backstock unit? Its barcode will stop working.")) return;
+
+                btn.disabled = true;
+                fetch(appUrl("/Inventory/DeleteBackstockUnit"), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": unitCsrfToken
+                    },
+                    body: JSON.stringify({ unitId: unitId })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            btn.closest(".unit-row")?.remove();
+                        } else {
+                            btn.disabled = false;
+                            alert(data.message || "Couldn't delete that unit.");
+                        }
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                    });
+            });
+
+            // ── "Which unit sold?" picker (Recent orders card) ─────────────────
+            const unitPick = document.getElementById("detailsUnitPick");
+            if (unitPick) {
+                const confirmBtn = unitPick.querySelector(".detailsUnitPickConfirmBtn");
+                const select = unitPick.querySelector(".detailsUnitPickSelect");
+                const status = unitPick.querySelector(".detailsUnitPickStatus");
+
+                confirmBtn.addEventListener("click", function () {
+                    const itemId = unitPick.dataset.itemId || "";
+                    const unitId = select ? select.value : "";
+                    if (!itemId || !unitId) return;
+
+                    confirmBtn.disabled = true;
+                    status.textContent = "Saving…";
+
+                    fetch(appUrl("/Inventory/MarkUnitSold"), {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "RequestVerificationToken": unitCsrfToken
+                        },
+                        body: JSON.stringify({ itemId: itemId, unitId: unitId })
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (data.success) {
+                                window.location.reload();
+                            } else {
+                                confirmBtn.disabled = false;
+                                status.textContent = data.message || "Couldn't save that.";
+                            }
+                        })
+                        .catch(function () {
+                            confirmBtn.disabled = false;
+                            status.textContent = "Couldn't save that.";
+                        });
+                });
+            }
+        })();
+    </script>
+}

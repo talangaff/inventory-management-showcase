@@ -1,0 +1,155 @@
+@model inventory_management.Models.StatsIndexViewModel
+@{
+    ViewData["Title"] = "Stats";
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">Stats</h1>
+        <p class="page-header-subtitle">Sales from 2026-08-01 forward only — classified Owned and Consignment items.</p>
+    </div>
+</div>
+
+@if (!Model.HasAnySaleRecords)
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "graph-up",
+        Title = "No sales recorded yet",
+        Message = "Once a classified item (Owned or Consignment) sells and resolves to a specific unit, it'll show up here. Sales before 2026-08-01, and items that were never classified, are never included."
+    })" />
+}
+else
+{
+    @if (Model.AnyMissingEbayFee)
+    {
+        <div class="alert alert-warning small">
+            eBay fee data is unavailable for at least one sale — the numbers below treat missing fees as $0, so "profit after fees" and consignor payouts may be understated until eBay's <code>sell.finances</code> scope is enabled and eBay is reconnected.
+        </div>
+    }
+    @if (Model.AnyMissingShippingLabelCost)
+    {
+        <div class="alert alert-warning small">
+            Actual shipping cost is missing for at least one shipped sale — the numbers below treat it as $0, so "Profit after fees" may be overstated. See <a asp-controller="Inventory" asp-action="NeedsAttention">Needs Attention</a> to enter it by hand until eBay's Finance API reports it.
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+            <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Owned items (@Model.OwnedSaleCount sale@(Model.OwnedSaleCount != 1 ? "s" : ""))</h2>
+            <a asp-action="Sales" class="btn btn-outline-secondary btn-sm">View sales</a>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted">Gross sales</div>
+                    <div class="h5 mb-0">$@Model.OwnedGrossSales.ToString("N2")</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted">Item cost</div>
+                    <div class="h5 mb-0">$@Model.OwnedTotalCost.ToString("N2")</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted">Net earnings <span title="Gross - Cost">(Gross − Cost)</span></div>
+                    <div class="h5 mb-0 @(Model.OwnedNetEarnings >= 0 ? "text-success" : "text-danger")">$@Model.OwnedNetEarnings.ToString("N2")</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted">Profit after fees</div>
+                    <div class="h5 mb-0 @(Model.OwnedProfitAfterFees >= 0 ? "text-success" : "text-danger")">$@Model.OwnedProfitAfterFees.ToString("N2")</div>
+                </div>
+            </div>
+            <div class="small text-muted border-top pt-2">
+                Reference only — not part of Net above: shipping collected $@Model.OwnedShippingCollected.ToString("N2"),
+                tax collected $@Model.OwnedTaxCollected.ToString("N2") (pass-through to eBay/government, not your revenue),
+                eBay fees $@Model.OwnedEbayFees.ToString("N2"),
+                actual shipping cost $@Model.OwnedShippingLabelCost.ToString("N2") (subtracted from Profit above, with shipping collected added back as revenue).
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">Consignment items (@Model.ConsignmentSaleCount sale@(Model.ConsignmentSaleCount != 1 ? "s" : ""), all consignors)</h2>
+        </div>
+        <div class="card-body">
+            @if (Model.ConsignmentSaleCount == 0)
+            {
+                <p class="text-muted mb-0">No consignment sales yet.</p>
+            }
+            else
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">Gross sales</div>
+                        <div class="h5 mb-0">$@Model.ConsignmentGrossSales.ToString("N2")</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">Owed to consignors</div>
+                        <div class="h5 mb-0">$@Model.ConsignmentAmountOwed.ToString("N2")</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">Net earnings <span title="Gross - Cost">(Gross − Cost)</span></div>
+                        <div class="h5 mb-0 @(Model.ConsignmentNetEarnings >= 0 ? "text-success" : "text-danger")">$@Model.ConsignmentNetEarnings.ToString("N2")</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted">Profit after fees</div>
+                        <div class="h5 mb-0 @(Model.ConsignmentProfitAfterFees >= 0 ? "text-success" : "text-danger")">$@Model.ConsignmentProfitAfterFees.ToString("N2")</div>
+                    </div>
+                </div>
+                <div class="small text-muted border-top pt-2">
+                    Reference only — not part of Net above: shipping collected $@Model.ConsignmentShippingCollected.ToString("N2"),
+                    tax collected $@Model.ConsignmentTaxCollected.ToString("N2") (pass-through to eBay/government, not your revenue),
+                    eBay fees $@Model.ConsignmentEbayFees.ToString("N2"),
+                    actual shipping cost $@Model.ConsignmentShippingLabelCost.ToString("N2") (subtracted from Profit above, with shipping collected added back as revenue).
+                    Here, "Cost" is the amount owed to consignors — the store's cut is what's left after paying them.
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h2 class="h6 text-uppercase text-muted fw-semibold mb-0">By consignor</h2>
+        </div>
+        <div class="card-body">
+            @if (!Model.ConsignorStats.Any())
+            {
+                <p class="text-muted mb-0">No consignment sales yet.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Consignor</th>
+                                <th>Current default split (they receive)</th>
+                                <th>Sales</th>
+                                <th>Total sold (gross)</th>
+                                <th>Owed / paid to them</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.ConsignorStats)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@row.ConsignorName</td>
+                                    <td>@row.CurrentDefaultSplitPercent.ToString("0.##")%</td>
+                                    <td>@row.SaleCount</td>
+                                    <td>$@row.TotalSold.ToString("N2")</td>
+                                    <td class="fw-semibold">$@row.AmountOwedOrPaid.ToString("N2")</td>
+                                    <td class="text-end">
+                                        <a asp-action="Sales" asp-route-consignorId="@row.ConsignorId" class="btn btn-outline-secondary btn-sm">View sales</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="small text-muted mt-2 mb-0">
+                    "Owed / paid" = split % × (sale price − shipping collected − eBay fee) per sale, summed. Split % the consignor receives is locked in per item at classification time, so this may differ from their current default above if it's changed since.
+                </p>
+            }
+        </div>
+    </div>
+}

@@ -1,0 +1,231 @@
+@model inventory_management.Models.ShelfIndexViewModel
+@{
+    ViewData["Title"] = "Shelving Units";
+    var successMessage = TempData["ShelfSuccess"] as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Shelving Units</h1>
+    <a asp-controller="Shelf" asp-action="Create" class="btn btn-primary">Add a Unit</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+@if (!Model.Units.Any())
+{
+    <div class="alert alert-info mb-0">No shelving units have been added yet.</div>
+}
+else
+{
+    <div class="mb-3">
+        <input id="shelfSearchInput" type="search" class="form-control" placeholder="Search shelving units by identifier or barcode..." />
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle" id="shelfTable">
+            <colgroup>
+                <col style="width:12%;">
+                <col style="width:12%;">
+                <col style="width:34%;">
+                <col style="width:10%;">
+                <col style="width:32%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th scope="col">Identifier</th>
+                    <th scope="col">Storage Unit</th>
+                    <th scope="col">Shelves</th>
+                    <th scope="col">Items</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="shelfTableBody">
+                @foreach (var unit in Model.Units)
+                {
+                    var shelfBarcodes = unit.GetShelfBarcodeNumbers();
+                    var suName = unit.StorageUnitId.HasValue
+                        ? Model.StorageUnitNameById.GetValueOrDefault(unit.StorageUnitId.Value, string.Empty)
+                        : string.Empty;
+                    var searchText = $"{unit.Identifier} {unit.BarcodeNumber} {suName} {string.Join(" ", shelfBarcodes)}";
+                    var unitSlotStatuses = Model.SlotStatusesByUnitId.GetValueOrDefault(unit.Id, new Dictionary<int, inventory_management.Models.ShelfStatus>());
+                    var itemCount = Model.ItemCountByUnitId.GetValueOrDefault(unit.Id);
+                    var collapseId = $"shelfBarcodes{unit.Id:N}";
+                    var shelvesJson = System.Text.Json.JsonSerializer.Serialize(
+                        Enumerable.Range(1, unit.ShelfCount).Reverse().Select(i => new {
+                            barcode = shelfBarcodes[i - 1],
+                            title = $"{unit.Identifier}-{i}"
+                        })
+                    );
+
+                    <tr class="shelf-row" data-search="@searchText.ToLowerInvariant()">
+                        <td>
+                            <div class="fw-semibold">@unit.Identifier</div>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-dark shelf-print-barcode-btn" data-barcode="@unit.BarcodeNumber" data-label="@unit.Identifier">
+                                    Print QR Code
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(suName))
+                            {
+                                <span class="badge bg-secondary">@suName</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">&mdash;</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="small text-muted mb-1">@unit.ShelfCount @(unit.ShelfCount == 1 ? "shelf" : "shelves")</div>
+                            <div class="d-flex gap-1 mb-2" title="Shelf status at a glance, highest shelf first">
+                                @for (var i = unit.ShelfCount; i >= 1; i--)
+                                {
+                                    var slotStatus = unitSlotStatuses.GetValueOrDefault(i, inventory_management.Models.ShelfStatus.ActiveInventory);
+                                    var (dotClass, dotLabel) = slotStatus switch
+                                    {
+                                        inventory_management.Models.ShelfStatus.Unlisted => ("status-unlisted", "Unlisted"),
+                                        inventory_management.Models.ShelfStatus.NeedsSorted => ("status-needs-sorted", "Needs Sorted"),
+                                        _ => ("status-active", "Active Inventory")
+                                    };
+                                    <span class="shelf-status-dot @dotClass" title="Shelf @unit.Identifier-@i: @dotLabel"></span>
+                                }
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="small text-primary shelf-barcodes-toggle" role="button"
+                                      data-bs-toggle="collapse" data-bs-target="#@collapseId"
+                                      aria-expanded="false" aria-controls="@collapseId">
+                                    <span class="collapse-chevron me-1">&#9660;</span>Shelves
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-dark shelf-print-all-btn" data-shelves="@shelvesJson">
+                                    Print All QR Codes
+                                </button>
+                            </div>
+                            <div id="@collapseId" class="collapse mt-2">
+                                <div class="d-flex flex-column gap-2">
+                                    @for (var i = unit.ShelfCount; i >= 1; i--)
+                                    {
+                                        var shelfBarcode = shelfBarcodes[i - 1];
+                                        var shelfLabel = $"{unit.Identifier}-{i}";
+                                        var slotStatus = unitSlotStatuses.GetValueOrDefault(i, inventory_management.Models.ShelfStatus.ActiveInventory);
+                                        var isActive = slotStatus == inventory_management.Models.ShelfStatus.ActiveInventory;
+                                        var (slotLabel, slotClass) = slotStatus switch
+                                        {
+                                            inventory_management.Models.ShelfStatus.Unlisted => ("Unlisted", "bg-secondary"),
+                                            inventory_management.Models.ShelfStatus.NeedsSorted => ("Needs Sorted", "bg-warning text-dark"),
+                                            _ => ("Active Inventory", "bg-success")
+                                        };
+                                        <div class="border rounded p-2">
+                                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                                <div class="small fw-semibold">
+                                                    Shelf @shelfLabel
+                                                    <span class="badge @slotClass ms-1">@slotLabel</span>
+                                                </div>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    @if (isActive)
+                                                    {
+                                                        <a asp-controller="Shelf" asp-action="ShelfSlotItems" asp-route-shelfUnitId="@unit.Id" asp-route-shelfNumber="@i" class="btn btn-sm btn-outline-primary">
+                                                            View Items
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="small text-muted align-self-center">Not active — no items</span>
+                                                    }
+                                                    <button type="button" class="btn btn-sm btn-outline-dark shelf-slot-print-barcode-btn" data-barcode="@shelfBarcode" data-label="@shelfLabel">
+                                                        Print QR Code
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <form class="d-flex align-items-center gap-2 flex-wrap shelf-status-form mt-2 pt-2 border-top"
+                                                  data-shelf-unit-id="@unit.Id" data-shelf-number="@i">
+                                                <label class="small text-muted mb-0">Shelf Type</label>
+                                                <select class="form-select form-select-sm shelf-status-select" style="max-width:180px;">
+                                                    <option value="0" selected="@(slotStatus == inventory_management.Models.ShelfStatus.ActiveInventory)">Active Inventory</option>
+                                                    <option value="1" selected="@(slotStatus == inventory_management.Models.ShelfStatus.Unlisted)">Unlisted</option>
+                                                    <option value="2" selected="@(slotStatus == inventory_management.Models.ShelfStatus.NeedsSorted)">Needs Sorted</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                                                <span class="small shelf-status-save-status"></span>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            @if (itemCount > 0)
+                            {
+                                <a asp-controller="Shelf" asp-action="Details" asp-route-id="@unit.Id" class="badge bg-primary text-decoration-none">@itemCount item@(itemCount != 1 ? "s" : "")</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Empty</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a asp-controller="Shelf" asp-action="Details" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-primary">View Items</a>
+                                <a asp-controller="Shelf" asp-action="Edit" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <form asp-controller="Shelf" asp-action="Delete" method="post" onsubmit="return confirm('Delete shelving unit \'@unit.Identifier\'? Items stored directly on its shelves will lose their location, and any boxes on it will be unlinked (not deleted).');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@unit.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <script src="~/js/barcode-print.js" asp-append-version="true"></script>
+    <script src="~/js/shelf-index.js" asp-append-version="true"></script>
+    <script>
+        document.querySelectorAll(".shelf-status-form").forEach((form) => {
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const saveBtn = form.querySelector("button[type='submit']");
+                const statusEl = form.querySelector(".shelf-status-save-status");
+                const select = form.querySelector(".shelf-status-select");
+                saveBtn.disabled = true;
+                statusEl.classList.remove("text-danger");
+                if (statusEl) statusEl.textContent = "Saving…";
+                try {
+                    const response = await fetch(appUrl("/Home/UpdateShelfSlotStatus"), {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                        body: JSON.stringify({
+                            shelfUnitId: form.dataset.shelfUnitId,
+                            shelfNumber: Number(form.dataset.shelfNumber),
+                            status: Number(select.value)
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.reload();
+                        return;
+                    }
+                    if (statusEl) {
+                        statusEl.textContent = result.message || "Failed.";
+                        statusEl.classList.add("text-danger");
+                    }
+                } catch (error) {
+                    if (statusEl) {
+                        statusEl.textContent = "Save failed.";
+                        statusEl.classList.add("text-danger");
+                    }
+                    console.error(error);
+                } finally {
+                    saveBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,1453 @@
+/* ─── Design Tokens ───────────────────────────────────────────────────────
+   Retail theme:
+   ink, kraft, paper. Ink is the action color, kraft the accent, stamp red the
+   alarm. Archivo for UI text (condensed + heavy for titles), IBM Plex Mono for
+   labels, IDs, barcodes and anything you'd read off a shipping label.
+   Fonts load from the <link> in _Layout.cshtml, not @import (render-blocking).
+────────────────────────────────────────────────────────────────────────── */
+:root {
+  --font-sans: 'Archivo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --ink:        #1d1a16;
+  --ink-soft:   #3a332b;
+  --kraft:      #c0935f;
+  --kraft-deep: #a87b49;
+  --kraft-pale: #f3e8d8;
+  --paper:      #fffdf9;
+  --stamp:      #b3301c;
+  --ok:         #2f6b3a;
+
+  --clr-primary:       var(--ink);
+  --clr-primary-dark:  #000000;
+  --clr-primary-light: var(--kraft-pale);
+  --clr-accent:        var(--kraft);
+
+  --clr-sidebar-bg:            var(--ink);
+  --clr-sidebar-border:        rgba(242,230,210,0.09);
+  --clr-sidebar-text:          #b5a894;
+  --clr-sidebar-text-hover:    #f2e6d2;
+  --clr-sidebar-text-active:   #fffaf0;
+  --clr-sidebar-hover:         rgba(242,230,210,0.06);
+  --clr-sidebar-active-bg:     rgba(192,147,95,0.16);
+  --clr-sidebar-active-border: var(--kraft);
+
+  --clr-page-bg:   #efe8dc;
+  --clr-surface:   var(--paper);
+  --clr-surface-2: #f8f3ea;
+  --clr-border:    #e3d9c8;
+  --clr-border-lt: #efe8dc;
+
+  --clr-text:           var(--ink);
+  --clr-text-secondary: #5f5446;
+  --clr-text-muted:     #8f8371;
+
+  --shadow-xs: 0 1px 2px rgba(45,30,12,0.06);
+  --shadow-sm: 0 1px 3px rgba(45,30,12,0.09), 0 1px 2px rgba(45,30,12,0.05);
+  --shadow-md: 0 6px 14px -6px rgba(45,30,12,0.22), 0 2px 4px rgba(45,30,12,0.06);
+  --shadow-lg: 0 18px 36px -14px rgba(45,30,12,0.35), 0 4px 8px rgba(45,30,12,0.06);
+
+  /* Tighter than a SaaS template: these are labels and sheets, not pills. */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius:    5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+
+  --sidebar-width: 256px;
+  --topbar-h:      56px;
+  --transition:    0.18s ease;
+
+  /* Bootstrap 5.3 runtime variables, so utilities (.text-primary, .bg-danger,
+     .alert-*, .badge, links, borders) follow the theme without touching markup. */
+  --bs-body-font-family: var(--font-sans);
+  --bs-font-monospace:   var(--font-mono);
+  --bs-body-color:       var(--ink);
+  --bs-body-color-rgb:   29,26,22;
+  --bs-body-bg:          var(--paper);
+  --bs-secondary-color:  #5f5446;
+  --bs-tertiary-bg:      #f8f3ea;
+  --bs-border-color:     #e3d9c8;
+  --bs-border-radius:    4px;
+  --bs-border-radius-sm: 3px;
+  --bs-border-radius-lg: 6px;
+  --bs-link-color:       var(--ink);
+  --bs-link-color-rgb:   29,26,22;
+  --bs-link-hover-color: var(--kraft-deep);
+  --bs-link-hover-color-rgb: 168,123,73;
+
+  --bs-primary:   #1d1a16;  --bs-primary-rgb:   29,26,22;
+  --bs-secondary: #6f6353;  --bs-secondary-rgb: 111,99,83;
+  --bs-success:   #2f6b3a;  --bs-success-rgb:   47,107,58;
+  --bs-danger:    #b3301c;  --bs-danger-rgb:    179,48,28;
+  --bs-warning:   #c98a1b;  --bs-warning-rgb:   201,138,27;
+  --bs-info:      #2f5f73;  --bs-info-rgb:      47,95,115;
+  --bs-light:     #f8f3ea;  --bs-light-rgb:     248,243,234;
+  --bs-dark:      #1d1a16;  --bs-dark-rgb:      29,26,22;
+
+  --bs-primary-text-emphasis:   #1d1a16; --bs-primary-bg-subtle:   #f3e8d8; --bs-primary-border-subtle:   #e2cfb3;
+  --bs-success-text-emphasis:   #234f2b; --bs-success-bg-subtle:   #e6f0e3; --bs-success-border-subtle:   #b9d3b5;
+  --bs-danger-text-emphasis:    #8a2515; --bs-danger-bg-subtle:    #f8e4df; --bs-danger-border-subtle:    #e8b6aa;
+  --bs-warning-text-emphasis:   #7a5410; --bs-warning-bg-subtle:   #fbf0d9; --bs-warning-border-subtle:   #ecd29a;
+  --bs-info-text-emphasis:      #234a5a; --bs-info-bg-subtle:      #e3edf1; --bs-info-border-subtle:      #b4cdd7;
+  --bs-secondary-text-emphasis: #4a4036; --bs-secondary-bg-subtle: #f1ebe1; --bs-secondary-border-subtle: #ddd2c1;
+  --bs-light-text-emphasis:     #4a4036; --bs-light-bg-subtle:     #fbf8f2; --bs-light-border-subtle:     #ece4d6;
+  --bs-dark-text-emphasis:      #1d1a16; --bs-dark-bg-subtle:      #e8e1d6; --bs-dark-border-subtle:      #cfc4b2;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+html { font-size: 14px; }
+
+@media (min-width: 768px) { html { font-size: 15px; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { min-height: 100%; margin: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--clr-page-bg);
+  /* Faint paper fibre, subtle noise. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .13 0 0 0 0 .05 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color: var(--clr-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { color: var(--clr-text); letter-spacing: -0.005em; }
+
+a { text-underline-offset: 2px; }
+
+/* Anything read off a label: IDs, barcodes, SKUs, tracking numbers. */
+code, kbd, samp, pre, .font-monospace, .mono { font-family: var(--font-mono) !important; }
+code { color: var(--ink-soft); background: var(--clr-surface-2); padding: 0.05em 0.35em; border-radius: var(--radius-xs); font-size: 0.86em; }
+
+/* Columns of money and counts line up. */
+.table, .badge, .page-header-title small, .dash-stat-value { font-variant-numeric: tabular-nums; }
+
+::selection { background: rgba(192,147,95,0.35); }
+
+/* ─── Focus rings ────────────────────────────────────────────────────────── */
+.btn:focus-visible,
+.form-control:focus,
+.form-check-input:focus,
+.form-select:focus,
+a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(192,147,95,0.28) !important;
+}
+
+/* ─── Dashboard Shell ────────────────────────────────────────────────────── */
+.dashboard-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+.dashboard-sidebar {
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  background: var(--clr-sidebar-bg);
+  border-right: 1px solid var(--clr-sidebar-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+.dashboard-sidebar::-webkit-scrollbar { width: 4px; }
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+}
+
+/* Brand */
+.sidebar-brand-area {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1.1rem 1rem 1rem;
+  border-bottom: 1px solid var(--clr-sidebar-border);
+  text-decoration: none;
+  color: var(--clr-sidebar-text-active);
+  flex-shrink: 0;
+}
+
+.sidebar-brand-text { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+
+.sidebar-brand-name {
+  font-weight: 900;
+  font-stretch: 68%;
+  font-variation-settings: "wdth" 68;
+  font-size: 1.35rem;
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  word-spacing: 0.12em;
+  color: #f2e6d2;
+}
+
+.sidebar-brand-sub {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clr-sidebar-text);
+  white-space: nowrap;
+}
+
+.sidebar-brand-sub b {
+  font-weight: 500;
+  color: #e2563f;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  padding: 0 0.3rem;
+  margin-right: 0.35rem;
+}
+
+.sidebar-brand-area:hover { color: var(--clr-sidebar-text-active); }
+
+.sidebar-brand-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.sidebar-brand-icon svg { display: block; width: 100%; height: 100%; }
+
+/* Nav */
+.dashboard-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.625rem 0.625rem;
+  flex: 1;
+}
+
+/* Also keep dashboard-brand for backwards compat with existing JS */
+.dashboard-brand {
+  display: none; /* replaced by sidebar-brand-area */
+}
+
+.nav-section-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clr-sidebar-text);
+  opacity: 0.6;
+  padding: 0.95rem 0.625rem 0.3rem;
+}
+
+.dashboard-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius-sm);
+  color: var(--clr-sidebar-text);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background var(--transition), color var(--transition), border-left-color var(--transition);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  border-left: 2px solid transparent;
+  line-height: 1.4;
+}
+
+.dashboard-link svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: opacity var(--transition);
+}
+
+.dashboard-link:hover {
+  background: var(--clr-sidebar-hover);
+  color: var(--clr-sidebar-text-hover);
+}
+
+.dashboard-link:hover svg { opacity: 1; }
+
+.dashboard-link.is-active {
+  background: var(--clr-sidebar-active-bg);
+  color: var(--clr-sidebar-text-active);
+  border-left-color: var(--clr-sidebar-active-border);
+}
+
+.dashboard-link.is-active svg { opacity: 1; }
+
+.dashboard-dropdown-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-dropdown-chevron {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  opacity: 0.45;
+  transition: transform var(--transition), opacity var(--transition);
+  flex-shrink: 0;
+}
+
+.dashboard-dropdown-toggle:hover .dashboard-dropdown-chevron { opacity: 0.8; }
+.dashboard-dropdown-toggle[aria-expanded="true"] .dashboard-dropdown-chevron {
+  transform: rotate(180deg);
+  opacity: 0.8;
+}
+
+/* Subnav */
+.dashboard-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  padding-left: 0.5rem;
+  margin: 0.125rem 0 0.125rem 1.5rem;
+  border-left: 1px solid rgba(242,230,210,0.1);
+}
+
+.dashboard-sublink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-xs);
+  color: var(--clr-sidebar-text);
+  text-decoration: none;
+  font-size: 0.8375rem;
+  font-weight: 400;
+  transition: background var(--transition), color var(--transition);
+  line-height: 1.4;
+}
+
+.dashboard-sublink::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.dashboard-sublink:hover {
+  background: var(--clr-sidebar-hover);
+  color: var(--clr-sidebar-text-hover);
+}
+
+.dashboard-sublink.is-active {
+  color: var(--clr-sidebar-text-active);
+  background: rgba(242,230,210,0.06);
+}
+
+.dashboard-sublink.is-active::before { opacity: 1; background: var(--kraft); }
+
+/* Account section */
+.dashboard-account {
+  padding: 0.75rem 0.875rem;
+  border-top: 1px solid var(--clr-sidebar-border);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.account-home {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--clr-sidebar-text);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--radius-xs);
+  transition: color var(--transition), background var(--transition);
+}
+
+.account-home:hover { color: var(--clr-sidebar-text-hover); background: var(--clr-sidebar-hover); }
+.account-home svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
+
+.account-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--clr-sidebar-text-hover);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-logout-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  border-radius: var(--radius-xs);
+  color: var(--clr-sidebar-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition), background var(--transition);
+  flex-shrink: 0;
+}
+
+.account-logout-btn:hover {
+  color: #f2e6d2;
+  background: var(--clr-sidebar-hover);
+}
+
+/* ─── Content ────────────────────────────────────────────────────────────── */
+.dashboard-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: 1.375rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.dashboard-content main {
+  flex: 1;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 1.75rem 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  padding: 0 0.25rem;
+}
+
+.dashboard-footer a { color: inherit; text-decoration: none; }
+.dashboard-footer a:hover { color: var(--clr-text); }
+
+/* ─── Topbar (mobile) ────────────────────────────────────────────────────── */
+.dashboard-topbar { display: none; }
+.dashboard-overlay { display: none; }
+
+.topbar-hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgba(242,230,210,0.08);
+  border: 1px solid rgba(242,230,210,0.14);
+  border-radius: var(--radius-sm);
+  color: #f2e6d2;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+.topbar-hamburger:hover { background: rgba(242,230,210,0.14); }
+
+/* ─── Topbar Actions ─────────────────────────────────────────────────────── */
+.topbar-actions {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex: 1;
+  margin-left: 0.625rem;
+  padding: 0.25rem 0;
+}
+
+.topbar-actions::-webkit-scrollbar { display: none; }
+
+.topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 0.275rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  color: rgba(242,230,210,0.8);
+  background: rgba(242,230,210,0.07);
+  border: 1px solid rgba(242,230,210,0.1);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.topbar-btn:hover {
+  background: rgba(242,230,210,0.14);
+  color: #fffaf0;
+  border-color: rgba(242,230,210,0.2);
+}
+
+.topbar-btn-primary,
+.topbar-btn-primary:hover {
+  background: var(--kraft);
+  color: var(--ink);
+  border-color: var(--kraft);
+  font-weight: 600;
+}
+
+/* ─── Bootstrap Component Overrides ─────────────────────────────────────── */
+
+/* Buttons — subtle depth + lift instead of flat Bootstrap defaults */
+.btn {
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0;
+  border-radius: var(--radius-sm);
+  padding: 0.4375rem 0.875rem;
+  transition: background-color var(--transition), border-color var(--transition),
+              color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.btn:active { transform: translateY(0); }
+
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning {
+  box-shadow: 0 1px 2px rgba(45,30,12,0.12);
+  border: none;
+}
+
+.btn-primary:hover,
+.btn-success:hover,
+.btn-danger:hover,
+.btn-warning:hover {
+  box-shadow: 0 4px 10px -2px rgba(45,30,12,0.25);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active,
+.btn-success:active,
+.btn-danger:active,
+.btn-warning:active {
+  box-shadow: 0 1px 2px rgba(45,30,12,0.12);
+}
+
+.btn-primary {
+  --bs-btn-color: #fffaf0;
+  --bs-btn-bg: var(--ink);
+  --bs-btn-border-color: var(--ink);
+  --bs-btn-hover-color: #fffaf0;
+  --bs-btn-hover-bg: #000;
+  --bs-btn-hover-border-color: #000;
+  --bs-btn-active-color: #fffaf0;
+  --bs-btn-active-bg: #000;
+  --bs-btn-active-border-color: #000;
+  --bs-btn-disabled-bg: #6f6353;
+  --bs-btn-disabled-border-color: #6f6353;
+  --bs-btn-focus-shadow-rgb: 192,147,95;
+}
+
+.btn-success {
+  --bs-btn-bg: var(--ok); --bs-btn-border-color: var(--ok);
+  --bs-btn-hover-bg: #255530; --bs-btn-hover-border-color: #255530;
+  --bs-btn-active-bg: #1f4828; --bs-btn-active-border-color: #1f4828;
+  --bs-btn-disabled-bg: var(--ok); --bs-btn-disabled-border-color: var(--ok);
+}
+
+.btn-danger {
+  --bs-btn-bg: var(--stamp); --bs-btn-border-color: var(--stamp);
+  --bs-btn-hover-bg: #942617; --bs-btn-hover-border-color: #942617;
+  --bs-btn-active-bg: #7d2013; --bs-btn-active-border-color: #7d2013;
+  --bs-btn-disabled-bg: var(--stamp); --bs-btn-disabled-border-color: var(--stamp);
+}
+
+.btn-warning {
+  --bs-btn-color: var(--ink); --bs-btn-bg: #e2a93b; --bs-btn-border-color: #e2a93b;
+  --bs-btn-hover-color: var(--ink); --bs-btn-hover-bg: #d39a2c; --bs-btn-hover-border-color: #d39a2c;
+}
+
+.btn-secondary {
+  --bs-btn-bg: #6f6353; --bs-btn-border-color: #6f6353;
+  --bs-btn-hover-bg: #5a5043; --bs-btn-hover-border-color: #5a5043;
+}
+
+.btn-outline-success {
+  --bs-btn-color: var(--ok); --bs-btn-border-color: #9cc19a;
+  --bs-btn-hover-bg: var(--ok); --bs-btn-hover-border-color: var(--ok);
+  --bs-btn-active-bg: var(--ok); --bs-btn-active-border-color: var(--ok);
+}
+
+.btn-outline-danger {
+  --bs-btn-color: var(--stamp); --bs-btn-border-color: #e1a99c;
+  --bs-btn-hover-bg: var(--stamp); --bs-btn-hover-border-color: var(--stamp);
+  --bs-btn-active-bg: var(--stamp); --bs-btn-active-border-color: var(--stamp);
+}
+
+.btn-outline-dark,
+.btn-outline-info,
+.btn-outline-warning {
+  --bs-btn-color: var(--ink-soft); --bs-btn-border-color: var(--clr-border);
+  --bs-btn-hover-color: var(--ink); --bs-btn-hover-bg: var(--clr-surface-2); --bs-btn-hover-border-color: var(--clr-text-muted);
+  --bs-btn-active-color: var(--ink); --bs-btn-active-bg: var(--kraft-pale); --bs-btn-active-border-color: var(--kraft);
+}
+
+.btn-link { --bs-btn-color: var(--ink); --bs-btn-hover-color: var(--kraft-deep); }
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-danger,
+.btn-outline-dark {
+  background: var(--clr-surface);
+  font-weight: 500;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--ink);
+  --bs-btn-border-color: var(--ink);
+  --bs-btn-hover-color: #fffaf0;
+  --bs-btn-hover-bg: var(--ink);
+  --bs-btn-hover-border-color: var(--ink);
+  --bs-btn-active-color: #fffaf0;
+  --bs-btn-active-bg: #000;
+  --bs-btn-active-border-color: #000;
+  --bs-btn-focus-shadow-rgb: 192,147,95;
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--clr-text-secondary);
+  --bs-btn-border-color: var(--clr-border);
+  --bs-btn-hover-color: var(--clr-text);
+  --bs-btn-hover-bg: var(--clr-page-bg);
+  --bs-btn-hover-border-color: var(--clr-text-muted);
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-primary:hover,
+.btn-outline-success:hover,
+.btn-outline-danger:hover,
+.btn-outline-dark:hover {
+  box-shadow: 0 2px 6px rgba(45,30,12,0.12);
+  transform: translateY(-1px);
+}
+
+.btn-sm {
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.8125rem;
+  border-radius: var(--radius-xs);
+}
+
+/* Icon-only button — for the compact row-actions menu */
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--clr-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.btn-icon:hover {
+  background: var(--clr-page-bg);
+  border-color: var(--clr-border);
+  color: var(--clr-text);
+}
+
+.btn-icon svg { width: 17px; height: 17px; }
+
+.btn-icon::after { display: none; } /* hide Bootstrap's dropdown-toggle caret */
+
+/* Cards */
+.card {
+  --bs-card-border-radius: var(--radius-lg);
+  --bs-card-border-color: var(--clr-border);
+  --bs-card-bg: var(--paper);
+  --bs-card-cap-bg: var(--clr-surface-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+  font-weight: 600;
+  border-bottom-color: var(--clr-border);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Tables */
+.table { font-size: 0.9rem; }
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--clr-border);
+  --bs-table-hover-bg: rgba(192,147,95,0.07);
+  --bs-table-striped-bg: rgba(192,147,95,0.045);
+}
+
+.table thead th {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-text-secondary);
+  background: var(--clr-surface-2);
+  border-bottom: 1.5px solid var(--ink);
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  white-space: nowrap;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-bg-type: rgba(192,147,95,0.045);
+}
+
+/* Form controls */
+.form-control,
+.form-select {
+  border-color: var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: var(--font-sans);
+  background-color: #fff;
+  color: var(--clr-text);
+  box-shadow: inset 0 1px 2px rgba(45,30,12,0.04);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.form-control:hover,
+.form-select:hover {
+  border-color: var(--clr-text-muted);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ink);
+  box-shadow: inset 0 1px 2px rgba(45,30,12,0.04), 0 0 0 3px rgba(192,147,95,0.25);
+}
+
+.form-label, label.form-label { font-weight: 600; font-size: 0.85rem; color: var(--ink-soft); }
+
+.form-check-input:checked { background-color: var(--ink); border-color: var(--ink); }
+.form-check-input:focus { border-color: var(--ink); }
+
+.form-text { color: var(--clr-text-muted); }
+
+/* Custom select chevron — replaces the default OS-drawn arrow with one that
+   matches the rest of the icon language, and gives selects the same visual
+   weight as buttons instead of looking like a bare native control. */
+.form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f5446' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-size: 14px;
+  padding-top: 0.4375rem;
+  padding-bottom: 0.4375rem;
+}
+
+.form-select-sm {
+  background-size: 12px;
+}
+
+/* Form floating labels (keep existing compat) */
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+/* Badges */
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-xs);
+}
+
+.badge.bg-warning, .badge.text-bg-warning { color: var(--ink) !important; }
+.badge.bg-light, .badge.text-bg-light { color: var(--ink-soft) !important; border: 1px solid var(--clr-border); }
+
+/* Alerts */
+.alert {
+  border-radius: var(--radius);
+  border-left-width: 4px;
+}
+
+/* Modals */
+.modal-content {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clr-border);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  border-bottom-color: var(--clr-border);
+}
+
+.modal-footer {
+  border-top-color: var(--clr-border);
+}
+
+/* Dropdown menus (Bootstrap's default flat white box, given the same
+   depth/radius language as cards and modals so it reads as one system
+   instead of a plain browser-style menu) */
+.dropdown-menu {
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.375rem;
+  font-size: 0.875rem;
+  min-width: 11rem;
+}
+
+.dropdown-item {
+  border-radius: var(--radius-xs);
+  padding: 0.5rem 0.625rem;
+  font-weight: 500;
+  color: var(--clr-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dropdown-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--clr-page-bg);
+  color: var(--clr-text);
+}
+
+.dropdown-item.text-danger:hover,
+.dropdown-item.text-danger:focus {
+  background: var(--bs-danger-bg-subtle);
+  color: var(--stamp) !important;
+}
+
+.dropdown-divider {
+  margin: 0.3125rem 0.25rem;
+  border-color: var(--clr-border);
+}
+
+/* ─── Row Actions Menu ────────────────────────────────────────────────────
+   Compact "⋯" trigger that replaces a row of same-size outline buttons
+   (View / Edit / Delete) in list-page tables with a single premium menu.
+   Usage:
+   <div class="dropdown action-menu">
+     <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+       <svg>...three-dot icon...</svg>
+     </button>
+     <ul class="dropdown-menu dropdown-menu-end">
+       <li><a class="dropdown-item" href="...">View</a></li>
+       ...
+     </ul>
+   </div>
+────────────────────────────────────────────────────────────────────────── */
+.action-menu {
+  display: inline-flex;
+}
+
+/* List group */
+.list-group-item {
+  border-color: var(--clr-border);
+  font-size: 0.9rem;
+}
+
+/* ─── Dashboard Home Cards ───────────────────────────────────────────────── */
+.dash-section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+  margin-bottom: 0.375rem;
+}
+
+.dash-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--clr-border);
+}
+
+/* Stat tiles: a label head in mono, a big condensed number, a one-line note. The
+   number is the thing you came for, so it's the loudest type on the page. */
+.dash-stats { display: grid; gap: 0.875rem; }
+.dash-stats-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dash-stats-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* "Waiting on you": only non-empty categories are shown, so the row fills whatever is left. */
+.dash-stats-auto { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.dash-all-clear {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1rem; border: 1px dashed #9cc19a; border-radius: var(--radius-lg);
+  background: var(--bs-success-bg-subtle); color: var(--ok); font-weight: 600;
+}
+.dash-all-clear::before { content: "\2713"; font-weight: 700; }
+
+.dash-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem 0.95rem;
+  background: var(--paper);
+  border: 1px solid var(--clr-border);
+  border-top: 3px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  text-decoration: none;
+  color: var(--clr-text);
+  transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+}
+
+.dash-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); color: var(--clr-text); }
+.dash-stat:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+.dash-stat.is-ink   { border-top-color: var(--ink); }
+.dash-stat.is-alarm { border-top-color: var(--stamp); }
+.dash-stat.is-alarm .dash-stat-value { color: var(--stamp); }
+.dash-stat.is-plain { border-top-color: var(--kraft); }
+.dash-stat.is-clear { border-top-color: #9cc19a; }
+
+.dash-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clr-text-secondary);
+}
+
+.dash-stat-value {
+  font-weight: 900;
+  font-stretch: 72%;
+  font-variation-settings: "wdth" 72;
+  font-size: 2.6rem;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+
+.dash-stat-value.is-zero { color: var(--clr-text-muted); }
+
+.dash-stat-note { font-size: 0.8rem; color: var(--clr-text-secondary); }
+.dash-stat.is-clear .dash-stat-note { color: var(--ok); font-weight: 600; }
+
+.dash-stat-go {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.75rem;
+  color: var(--clr-text-muted);
+  transition: transform var(--transition), color var(--transition);
+}
+
+.dash-stat:hover .dash-stat-go { transform: translateX(3px); color: var(--clr-text); }
+
+.dash-sale-title { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-sale-title a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--clr-text); }
+.dash-sale-title a:hover { color: var(--kraft-deep); }
+
+.dash-shortcuts {
+  background: var(--paper);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.dash-shortcuts a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--clr-border);
+  text-decoration: none;
+  color: var(--clr-text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background var(--transition);
+}
+
+.dash-shortcuts a:last-child { border-bottom: 0; }
+.dash-shortcuts a:hover { background: var(--clr-surface-2); }
+.dash-shortcuts a span { color: var(--clr-text-muted); transition: transform var(--transition); }
+.dash-shortcuts a:hover span { transform: translateX(3px); color: var(--clr-text); }
+
+@media (max-width: 1199.98px) {
+  .dash-stats-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 575.98px) {
+  .dash-stats-3 { grid-template-columns: 1fr; }
+  .dash-stat-value { font-size: 2.2rem; }
+}
+
+/* In-page section headings ("Listing info", "Storage", ...) read like label text. */
+h2.h6.text-uppercase,
+h3.h6.text-uppercase,
+.card-header.text-uppercase,
+.card-header .text-uppercase {
+  font-family: var(--font-mono);
+  font-weight: 500 !important;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+/* Prevent horizontal scroll at all times */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.dashboard-shell {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+@media (max-width: 991.98px) {
+  .dashboard-shell {
+    flex-direction: column;
+  }
+
+  .dashboard-topbar {
+    display: flex;
+    align-items: center;
+    height: var(--topbar-h);
+    padding: 0 1rem;
+    background: var(--clr-sidebar-bg);
+    border-bottom: 1px solid var(--clr-sidebar-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .dashboard-sidebar {
+    position: fixed;
+    left: calc(-1 * var(--sidebar-width) - 10px);
+    top: 0;
+    width: var(--sidebar-width);
+    flex: 0 0 var(--sidebar-width);
+    height: 100vh;
+    z-index: 200;
+    transition: left 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .dashboard-sidebar.open {
+    left: 0;
+  }
+
+  .dashboard-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 150;
+  }
+
+  .dashboard-overlay.active {
+    display: block;
+  }
+
+  .dashboard-content {
+    margin-left: 0;
+    padding: 0.875rem;
+  }
+
+  .dashboard-content main {
+    padding: 1rem;
+    border-radius: var(--radius);
+  }
+}
+
+/* ─── Extra-small screens (< 576px) ─────────────────────────────────────── */
+@media (max-width: 575.98px) {
+  .dashboard-content {
+    padding: 0.625rem;
+  }
+
+  .dashboard-content main {
+    padding: 0.875rem;
+  }
+
+  /* Page headers: allow wrapping on very small screens */
+  .page-header-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.625rem;
+  }
+
+  /* Bulk action bar: stack into two rows */
+  .bulk-action-row {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  /* Tables: tighten column padding */
+  .table td, .table th {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  /* Reduce h3/h4 heading size slightly */
+  .h3 { font-size: 1.25rem; }
+  h1.h3 { font-size: 1.25rem; }
+}
+
+/* ─── Mobile bulk action bar ─────────────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  #bulkActionBar .container-fluid {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  #bulkActionBar .d-flex {
+    flex-wrap: wrap;
+  }
+
+  #bulkActionBar select,
+  #bulkActionBar .form-select {
+    min-width: 0 !important;
+    flex: 1;
+  }
+
+  #bulkActionBar #bulkCancelBtn {
+    margin-left: 0 !important;
+  }
+}
+
+/* ─── Inventory item storage panel ──────────────────────────────────────── */
+.inventory-storage-panel {
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .inventory-storage-panel {
+    min-width: 300px;
+    max-width: 360px;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Collapsible section chevron (shared by Shelf Index/Details) ─────────── */
+.collapse-chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 0.7em;
+}
+.collapsed .collapse-chevron,
+[aria-expanded="false"] .collapse-chevron {
+  transform: rotate(-90deg);
+}
+[role="button"] {
+  cursor: pointer;
+}
+
+/* ─── Shelf slot status dots (Shelf Index at-a-glance summary) ─────────────── */
+.shelf-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.shelf-status-dot.status-active { background-color: var(--bs-success); }
+.shelf-status-dot.status-unlisted { background-color: var(--bs-secondary); }
+.shelf-status-dot.status-needs-sorted { background-color: var(--bs-warning); }
+
+/* Fixed column widths (set via <colgroup>) so expanding the "Shelves" collapse doesn't
+   reflow/resize the other columns. */
+#shelfTable {
+  table-layout: fixed;
+}
+#shelfTable td {
+  overflow-wrap: break-word;
+}
+
+/* ─── Utility ────────────────────────────────────────────────────────────── */
+.text-primary-custom { color: var(--clr-primary) !important; }
+
+/* Hide empty alert divs (e.g. validation summary with no errors) */
+.alert:empty { display: none !important; }
+.alert ul:empty { display: none !important; }
+.alert:has(ul:empty) { display: none !important; }
+
+/* ─── Page Header (shared pattern) ──────────────────────────────────────────
+   Canonical markup (copy this shape on every page):
+
+   <div class="page-header page-header-flex mb-4">
+     <div>
+       <h1 class="page-header-title">Title</h1>
+       <p class="page-header-subtitle">Optional one-line description.</p>
+     </div>
+     <div class="page-header-actions"><a class="btn btn-primary">Action</a></div>
+   </div>
+
+   .page-header-flex already stacks on mobile via the <575.98px media block
+   below (see "Extra-small screens").
+────────────────────────────────────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.page-header-title {
+  font-size: 1.85rem;
+  font-weight: 900;
+  font-stretch: 72%;
+  font-variation-settings: "wdth" 72;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  word-spacing: 0.1em;
+  color: var(--clr-text);
+  margin: 0;
+}
+
+/* The "(203)" count after a title. !important because several pages size it inline. */
+.page-header-title small,
+.page-header-title .text-muted {
+  font-family: var(--font-mono);
+  font-size: 0.5em !important;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  vertical-align: 0.35em;
+  color: var(--clr-text-muted) !important;
+}
+
+.page-header-subtitle {
+  font-size: 0.85rem;
+  color: var(--clr-text-secondary);
+  margin: 0.45rem 0 0;
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ─── Empty State (shared partial: Views/Shared/_EmptyState.cshtml) ────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  gap: 0.25rem;
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.empty-state-icon svg { width: 24px; height: 24px; }
+
+.empty-state-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  margin: 0;
+}
+
+.empty-state-message {
+  font-size: 0.8375rem;
+  color: var(--clr-text-secondary);
+  max-width: 32rem;
+  margin: 0.25rem 0 0;
+}
+
+.empty-state-action { margin-top: 1rem; }
+
+/* ─── Form Card (standalone create/edit forms) ─────────────────────────────
+   Lighter-weight sibling of .login-card for pages like StorageUnit/Form,
+   ShippingBoxes/Create+Edit, Box/Form, Shelf/Create, Drafts/Edit.
+────────────────────────────────────────────────────────────────────────── */
+.form-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  max-width: 560px;
+  overflow: hidden;
+}
+
+.form-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.form-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.form-card-icon svg { width: 20px; height: 20px; }
+
+.form-card-header h1,
+.form-card-header h2 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin: 0;
+}
+
+.form-card-header p {
+  font-size: 0.8125rem;
+  color: var(--clr-text-secondary);
+  margin: 0.125rem 0 0;
+}
+
+.form-card-body {
+  padding: 1.5rem;
+}
+
+/* ─── Table Card (list-page table wrapper) ──────────────────────────────────
+   Usage: <div class="table-responsive table-card"><table class="table ...">
+────────────────────────────────────────────────────────────────────────── */
+.table-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.table-card table { margin-bottom: 0; }
+
+/* Ensure row-action buttons keep a real touch target on touch devices */
+@media (hover: none) {
+  .table-card .btn-sm,
+  .table .btn-sm {
+    padding-block: 0.4rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .page-header-title { font-size: 1.5rem; }
+  .form-card { max-width: 100%; }
+  .form-card-body { padding: 1.125rem; }
+
+  /* Scan page: let the USB/Camera toggle wrap instead of overflowing */
+  .scan-mode-group {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .scan-mode-group .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Scan page: keep the camera preview usable on short/landscape phone viewports */
+@media (max-height: 500px) {
+  #scannerVideo {
+    max-height: 220px;
+  }
+}
+
+/* Scan page: the viewfinder icon breathes while it waits for input. */
+.scan-wait-icon { color: var(--kraft-deep); animation: scan-wait 1.8s ease-in-out infinite; }
+@keyframes scan-wait { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation: none !important; }
+  .btn:hover, .dash-stat:hover { transform: none !important; }
+}
+
+/* ─── Receipt "Items" strip (shared with the Amazon receipts page) ───────────
+   Horizontal cards for inventory that has no receipt yet; clicking one picks it
+   for the next added line. */
+.pick-search { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0.75rem 1rem 0.25rem; }
+.pick-search input { max-width: 22rem; }
+.pick-hint { font-size: 0.78rem; color: var(--clr-text-muted); }
+.pick-strip {
+  display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.6rem 1rem 0.9rem;
+  scroll-snap-type: x proximity; scrollbar-width: thin;
+}
+.pick-card {
+  flex: 0 0 9.5rem; scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 0.3rem; text-align: left;
+  padding: 0.5rem; background: #fff; color: var(--clr-text);
+  border: 1.5px solid var(--clr-border); border-radius: var(--radius); cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.pick-card:hover { border-color: var(--clr-text-muted); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.pick-card:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pick-card[aria-selected="true"] { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(192,147,95,0.35); }
+.pick-card img, .pick-noimg { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: var(--radius-sm); background: var(--clr-surface-2); display: block; }
+.pick-title { font-size: 0.8rem; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
+.pick-id { font-size: 0.68rem; color: var(--clr-text-muted); }
+.pick-need { align-self: flex-start; font-size: 0.68rem; font-weight: 700; color: #7a5410; background: var(--bs-warning-bg-subtle); border: 1px solid #ecd29a; border-radius: 3px; padding: 0 0.3rem; }
+.pick-card[hidden] { display: none; }
+.pick-nomatch { margin: 0.5rem 0; white-space: nowrap; }
+.pick-picked { margin-left: 0.5rem; font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--kraft-deep); }
+#addItemCard.is-picked { box-shadow: inset 4px 0 0 var(--kraft), var(--shadow-sm); background: var(--kraft-pale); }
+
+
+/* ---- tables scroll sideways instead of clipping or crushing their columns.
+   .table-card sets overflow:hidden (for its rounded corners), which beat Bootstrap's
+   .table-responsive scrolling: switch only the x axis back on. */
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-responsive.table-card { overflow-x: auto; overflow-y: hidden; }
+.table-responsive > .table { min-width: 720px; }
+.table-responsive > .table th { white-space: nowrap; }

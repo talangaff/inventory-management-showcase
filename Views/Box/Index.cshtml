@@ -1,0 +1,143 @@
+@model inventory_management.Models.BoxIndexViewModel
+@{
+    ViewData["Title"] = "Boxes";
+    var success = TempData["BoxSuccess"] as string;
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">Boxes</h1>
+        <p class="page-header-subtitle">Storage boxes and what's inside each one.</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-controller="Box" asp-action="Create" class="btn btn-primary">Add Box</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(success))
+{
+    <div class="alert alert-success">@success</div>
+}
+
+@if (!Model.Boxes.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "box",
+        Title = "No boxes yet",
+        Message = "Add a box to start assigning storage locations to items.",
+        ActionText = "Add Box",
+        ActionUrl = Url.Action("Create", "Box")
+    })" />
+}
+else
+{
+    <div class="mb-3">
+        <input id="boxSearchInput" type="search" class="form-control" placeholder="Search boxes by identifier, shelf location, or barcode..." />
+    </div>
+    <div class="table-responsive table-card">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Identifier</th>
+                    <th>Box Barcode</th>
+                    <th>Shelf Location</th>
+                    <th>Shelf Barcode</th>
+                    <th>Items</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var box in Model.Boxes)
+                {
+                    var locationDisplay = box.IsTransitBox
+                        ? "Transit Box"
+                        : box.StorageUnitId.HasValue
+                            ? $"Storage: {box.StorageUnitIdentifier}"
+                            : $"{box.ShelfUnitIdentifier}-{box.ShelfNumber}";
+                    var searchText = $"{box.BoxIdentifier} {box.BoxBarcode} {box.ShelfUnitIdentifier} {box.ShelfNumber} {box.ShelfBarcode} {box.StorageUnitIdentifier} {(box.IsTransitBox ? "transit" : string.Empty)}";
+                    <tr class="box-row" data-search="@searchText.ToLowerInvariant()">
+                        <td>@box.BoxIdentifier</td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-dark box-print-barcode-btn" data-barcode="@box.BoxBarcode" data-label="Box-@box.BoxIdentifier">
+                                    Print QR Code
+                                </button>
+                            </div>
+                        </td>
+                        <td>@locationDisplay</td>
+                        <td>@(box.StorageUnitId.HasValue ? string.Empty : box.ShelfBarcode)</td>
+                        <td>
+                            <a asp-controller="Box" asp-action="Details" asp-route-id="@box.Id" class="text-decoration-none">@box.ItemCount</a>
+                        </td>
+                        <td>
+                            <div class="dropdown action-menu">
+                                <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions for box @box.BoxIdentifier">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/></svg>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Box" asp-action="Details" asp-route-id="@box.Id">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            View Items
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Box" asp-action="Edit" asp-route-id="@box.Id">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
+                                            Edit
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger"
+                                                data-bs-toggle="modal" data-bs-target="#deleteBoxModal"
+                                                data-id="@box.Id" data-name="Box @box.BoxIdentifier">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+                                            Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <partial name="_DeleteConfirmModal" model="@(new DeleteConfirmModalViewModel {
+        ModalId = "deleteBoxModal",
+        Title = "Delete Box",
+        ItemNoun = "box",
+        DeleteActionUrl = Url.Action("Delete", "Box") ?? string.Empty,
+        IdFieldName = "id"
+    })" />
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <script src="~/js/barcode-print.js" asp-append-version="true"></script>
+    <script>
+        InventoryDeleteModal.wire("deleteBoxModal", { idField: "id", nameField: "name" });
+
+        const boxSearchInput = document.getElementById("boxSearchInput");
+        const boxRows = Array.from(document.querySelectorAll(".box-row"));
+
+        if (boxSearchInput) {
+            boxSearchInput.addEventListener("input", () => {
+                const term = boxSearchInput.value.trim().toLowerCase();
+                boxRows.forEach((row) => {
+                    const searchable = row.dataset.search || "";
+                    const matches = !term || searchable.includes(term);
+                    row.classList.toggle("d-none", !matches);
+                });
+            });
+        }
+
+        document.querySelectorAll(".box-print-barcode-btn").forEach((button) => {
+            button.addEventListener("click", () => {
+                window.InventoryBarcodePrint.openBarcodePrintWindow(button.dataset.barcode || "", button.dataset.label || "");
+            });
+        });
+    </script>
+}

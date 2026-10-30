@@ -1,0 +1,121 @@
+@model inventory_management.Models.ConsignorsIndexViewModel
+@{
+    ViewData["Title"] = "Consignors";
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">Consignors</h1>
+        <p class="page-header-subtitle">People you sell items on behalf of. Default split % is the share <strong>the consignor receives</strong> of each sale.</p>
+    </div>
+</div>
+
+@if (ViewBag.SuccessMessage is string successMsg)
+{
+    <div class="alert alert-success">@successMsg</div>
+}
+@if (ViewBag.ErrorMessage is string errorMsg)
+{
+    <div class="alert alert-danger">@errorMsg</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Add a consignor</div>
+        <form asp-controller="Consignors" asp-action="Create" method="post" class="d-flex gap-2 align-items-end flex-wrap">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="form-label small mb-1">Name</label>
+                <input type="text" name="Name" class="form-control form-control-sm" style="min-width:200px;" required />
+            </div>
+            <div>
+                <label class="form-label small mb-1">Default split % (they receive)</label>
+                <div class="input-group input-group-sm" style="max-width:140px;">
+                    <input type="number" name="DefaultSplitPercent" class="form-control" step="0.01" min="0" max="100" value="50" required />
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Add Consignor</button>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Consignors.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "people",
+        Title = "No consignors yet",
+        Message = "Add a consignor above before classifying an item as Consignment."
+    })" />
+}
+else
+{
+    <div class="table-responsive table-card">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Default split (they receive)</th>
+                    <th>Active items</th>
+                    <th>Past sales</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Consignors)
+                {
+                    <tr>
+                        <td class="fw-semibold consignor-name-display" data-id="@c.Id">@c.Name</td>
+                        <td class="consignor-split-display" data-id="@c.Id">@c.DefaultSplitPercent.ToString("0.##")%</td>
+                        <td>@c.ActiveListingCount</td>
+                        <td>@c.SaleRecordCount</td>
+                        <td>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-secondary consignor-edit-toggle-btn"
+                                        data-id="@c.Id" data-name="@c.Name" data-split="@c.DefaultSplitPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">
+                                    Edit
+                                </button>
+                                <form asp-controller="Consignors" asp-action="Delete" method="post"
+                                      onsubmit="return confirm('Delete @c.Name? This only works if they have no active items or past sales.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                            <form asp-controller="Consignors" asp-action="Edit" method="post"
+                                  class="d-none consignor-edit-form mt-2 d-flex gap-2 align-items-end flex-wrap" data-id="@c.Id">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="Id" value="@c.Id" />
+                                <div>
+                                    <label class="form-label small mb-1">Name</label>
+                                    <input type="text" name="Name" class="form-control form-control-sm consignor-edit-name-input" value="@c.Name" required />
+                                </div>
+                                <div>
+                                    <label class="form-label small mb-1">Split %</label>
+                                    <div class="input-group input-group-sm" style="max-width:120px;">
+                                        <input type="number" name="DefaultSplitPercent" class="form-control consignor-edit-split-input" step="0.01" min="0" max="100" value="@c.DefaultSplitPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" required />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="small text-muted mt-2">Changing a consignor's default split % only affects items classified after the change — already-classified items and past sales keep the split % they were assigned at the time.</p>
+}
+
+<script>
+    document.querySelectorAll('.consignor-edit-toggle-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            var form = document.querySelector('.consignor-edit-form[data-id="' + id + '"]');
+            if (form) {
+                form.classList.toggle('d-none');
+            }
+        });
+    });
+</script>

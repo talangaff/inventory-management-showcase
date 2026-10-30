@@ -1,0 +1,83 @@
+@model inventory_management.Models.StatsSalesViewModel
+@{
+    var title = Model.ConsignorId.HasValue ? $"Sales — {Model.ConsignorName ?? "Unknown consignor"}" : "Sales — Owned items";
+    ViewData["Title"] = title;
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">@title</h1>
+        <p class="page-header-subtitle">@Model.Rows.Count sale@(Model.Rows.Count != 1 ? "s" : "")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to Stats</a>
+</div>
+
+@if (!Model.Rows.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "graph-up",
+        Title = "No sales here yet",
+        Message = "Sales will show up here once they resolve to a specific unit."
+    })" />
+}
+else
+{
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Item</th>
+                            <th>Sold</th>
+                            <th class="text-end">Sell price</th>
+                            <th class="text-end">eBay fee</th>
+                            <th class="text-end">Shipping cost</th>
+                            <th class="text-end">Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(row.ImageUrl))
+                                    {
+                                        <img src="@row.ImageUrl" alt="Photo for @row.Title" style="width:48px;height:48px;object-fit:cover;border-radius:6px;" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width:48px;height:48px;border-radius:6px;" class="bg-light"></div>
+                                    }
+                                </td>
+                                <td>@row.Title</td>
+                                <td>@row.SoldAtUtc.ToString("yyyy-MM-dd")</td>
+                                <td class="text-end">$@row.SalePriceGross.ToString("N2")</td>
+                                <td class="text-end">
+                                    @(row.EbayFee.HasValue ? $"${row.EbayFee.Value.ToString("N2")}" : "—")
+                                </td>
+                                <td class="text-end">
+                                    @(row.ShippingLabelCost.HasValue ? $"${row.ShippingLabelCost.Value.ToString("N2")}" : "—")
+                                </td>
+                                <td class="text-end fw-semibold @(row.Profit >= 0 ? "text-success" : "text-danger")">$@row.Profit.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    @if (Model.Rows.Any(x => !x.EbayFee.HasValue))
+    {
+        <div class="alert alert-warning small">
+            One or more sales above have no eBay fee yet — their Profit column treats the missing fee as $0, so it may be overstated until eBay posts it (or the <code>sell.finances</code> scope is enabled and eBay reconnected).
+        </div>
+    }
+    @if (Model.Rows.Any(x => !x.ShippingLabelCost.HasValue))
+    {
+        <div class="alert alert-warning small">
+            One or more sales above have no shipping cost yet — their Profit column treats it as $0, so it may be overstated until eBay posts it or it's entered manually on Needs Attention.
+        </div>
+    }
+}

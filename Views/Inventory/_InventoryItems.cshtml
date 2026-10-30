@@ -1,0 +1,208 @@
+@model inventory_management.Models.InventoryIndexViewModel
+
+@foreach (var listing in Model.Listings)
+{
+    <li class="list-group-item px-0 inventory-list-item">
+        @if (Model.IsUnprintedPage)
+        {
+            <div class="d-flex flex-column gap-2">
+                <div class="d-flex gap-3 align-items-center">
+                    @if (!string.IsNullOrWhiteSpace(listing.CoverPhotoUrl))
+                    {
+                        <img src="@listing.CoverPhotoUrl" alt="Cover photo for @listing.Title" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0;" />
+                    }
+                    else
+                    {
+                        <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="width:56px;height:56px;font-size:11px;flex-shrink:0;">
+                            No image
+                        </div>
+                    }
+                    <span class="fw-semibold flex-grow-1">@listing.Title</span>
+                </div>
+                @* One row per unprinted unit — a listing with multiple physical copies (or
+                   backstock) stays on this page until every one of its units is printed and
+                   marked, not just the first. *@
+                <div class="d-flex flex-column gap-1 ps-5">
+                    @foreach (var unit in listing.UnprintedUnits)
+                    {
+                        <div class="d-flex gap-2 align-items-center inventory-unit-print-row" data-unit-item="true">
+                            <span class="small text-muted flex-grow-1">
+                                @(unit.TotalUnitCount > 1 ? $"Unit {unit.UnitIndex} of {unit.TotalUnitCount}" : "Label")
+                                @if (unit.Status == "Backstock")
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border ms-1">Backstock</span>
+                                }
+                                <span class="text-muted ms-1">(@unit.Barcode)</span>
+                            </span>
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-dark print-barcode-btn flex-shrink-0"
+                                data-barcode="@unit.Barcode"
+                                data-unit-id="@unit.UnitId"
+                                data-item-title="@listing.Title">
+                                Print QR Code
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+        <div class="d-flex gap-3 align-items-start">
+            <div class="form-check align-self-center me-1">
+                <input type="checkbox" class="form-check-input bulk-item-checkbox"
+                       data-item-id="@listing.ItemId" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(listing.CoverPhotoUrl))
+            {
+                <img src="@listing.CoverPhotoUrl" alt="Cover photo for @listing.Title" style="width:72px;height:72px;object-fit:cover;border-radius:6px;" />
+            }
+            else
+            {
+                <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="width:72px;height:72px;font-size:12px;">
+                    No image
+                </div>
+            }
+            <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between flex-grow-1 w-100">
+                <div class="flex-grow-1">
+                    <a asp-action="Details" asp-route-id="@listing.ItemId" class="text-decoration-none fw-bold text-dark">@listing.Title</a>
+                    <div class="small text-muted">
+                        Item ID: <a href="https://www.ebay.com/itm/@listing.ItemId" target="_blank" rel="noopener noreferrer" class="text-muted font-monospace">@listing.ItemId</a>
+                    </div>
+                    @if (listing.QuantityAvailable.HasValue)
+                    {
+                        <div class="small text-muted">Available: @listing.QuantityAvailable</div>
+                    }
+                    @if (listing.CurrentPrice.HasValue)
+                    {
+                        <div class="small text-muted">Price: @listing.CurrencyId @listing.CurrentPrice!.Value.ToString("N2")</div>
+                    }
+                    <div class="small text-muted">Listed: @listing.ListedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</div>
+                    @{
+                        var hasBox = Model.SavedBoxesByItemId.TryGetValue(listing.ItemId, out var savedBox);
+                        var hasShelf = Model.SavedLocationsByItemId.TryGetValue(listing.ItemId, out var savedLocation);
+                        var hasShelfOnly = !hasBox && hasShelf;
+                        var shelfBadgeText = hasShelfOnly
+                            ? $"{savedLocation!.ShelfUnitIdentifier}-{savedLocation.ShelfNumber} ({savedLocation.ShelfBarcode})"
+                            : string.Empty;
+                        var boxBadgeText = hasBox
+                            ? $"Box {savedBox!.BoxIdentifier} ({savedBox.BoxBarcode})"
+                            : string.Empty;
+                        var boxLocationBadgeText = hasBox
+                            ? $"Box Location: {savedBox!.ShelfUnitIdentifier}-{savedBox.ShelfNumber} ({savedBox.ShelfBarcode})"
+                            : string.Empty;
+                    }
+                    <div class="small mt-1 inventory-badge-group">
+                        <span class="badge bg-success-subtle text-success-emphasis border inventory-shelf-badge @(hasShelfOnly ? "" : "d-none")">
+                            @shelfBadgeText
+                        </span>
+                    </div>
+                    <div class="small mt-1 inventory-badge-group">
+                        <span class="badge bg-primary-subtle text-primary-emphasis border inventory-box-badge @(hasBox ? "" : "d-none")">
+                            @boxBadgeText
+                        </span>
+                    </div>
+                    <div class="small mt-1 inventory-badge-group">
+                        <span class="badge bg-info-subtle text-info-emphasis border inventory-box-location-badge @(hasBox ? "" : "d-none")">
+                            @boxLocationBadgeText
+                        </span>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-2">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-dark print-barcode-btn"
+                            data-barcode="@listing.Barcode"
+                            data-unit-id="@listing.PrimaryUnitId"
+                            data-item-title="@listing.Title">
+                            Print QR Code
+                        </button>
+                        @if (listing.LabelPrintedAtUtc.HasValue)
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis border label-printed-badge" title="Printed @listing.LabelPrintedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy")">Printed</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="border rounded p-2 bg-light-subtle inventory-storage-panel">
+                    @if (hasBox || hasShelf)
+                    {
+                        <form asp-action="RemoveFromStorage" method="post" class="inventory-remove-storage-form mb-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnAction" value="@(Model.IsMissingDataPage ? "MissingData" : "ActiveInventory")" />
+                            <input type="hidden" name="ItemId" value="@listing.ItemId" />
+                            <input type="hidden" name="ItemTitle" value="@listing.Title" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger w-100">Remove from storage</button>
+                        </form>
+                    }
+                    @if (Model.ShelfUnits.Any())
+                    {
+                        <form asp-action="AssignLocation" method="post" class="inventory-assign-location-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnAction" value="@(Model.IsMissingDataPage ? "MissingData" : "ActiveInventory")" />
+                            <input type="hidden" name="ItemId" value="@listing.ItemId" />
+                            <input type="hidden" name="ItemTitle" value="@listing.Title" />
+                            <div class="row g-2">
+                                <div class="col-8">
+                                    <label class="form-label small mb-1">Shelving Unit</label>
+                                    <select name="ShelfUnitId" class="form-select form-select-sm inventory-shelf-unit-select" data-item-id="@listing.ItemId" required>
+                                        @foreach (var unit in Model.ShelfUnits)
+                                        {
+                                            <option
+                                                value="@unit.Id"
+                                                data-shelf-count="@unit.ShelfCount"
+                                                data-barcode-prefix="@unit.BarcodePrefix">
+                                                @unit.Identifier (@unit.ShelfCount shelves)
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-1">Shelf</label>
+                                    <select name="ShelfNumber" class="form-select form-select-sm inventory-shelf-number-select" data-item-id="@listing.ItemId" required></select>
+                                </div>
+                                <div class="col-12 d-grid">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Save</button>
+                                </div>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="small text-warning">Create a shelving unit first to assign a storage location.</div>
+                    }
+
+                    @if (Model.Boxes.Any())
+                    {
+                        <form asp-action="AssignBox" method="post" class="mt-2 pt-2 border-top inventory-assign-box-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnAction" value="@(Model.IsMissingDataPage ? "MissingData" : "ActiveInventory")" />
+                            <input type="hidden" name="ItemId" value="@listing.ItemId" />
+                            <input type="hidden" name="ItemTitle" value="@listing.Title" />
+                            <div class="row g-2">
+                                <div class="col-8">
+                                    <label class="form-label small mb-1">Assign to Box</label>
+                                    <select name="BoxId" class="form-select form-select-sm" required>
+                                        @foreach (var box in Model.Boxes)
+                                        {
+                                            <option value="@box.Id">@box.BoxIdentifier (@box.BoxBarcode)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-4 d-grid align-self-end">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                                </div>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="small text-warning mt-2 pt-2 border-top">Create a box first to assign this item to a box.</div>
+                    }
+                </div>
+            </div>
+        </div>
+        }
+    </li>
+}

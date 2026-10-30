@@ -1,0 +1,120 @@
+@model inventory_management.Models.DraftIndexViewModel
+@{
+    ViewData["Title"] = "eBay Drafts";
+    var success = TempData["SuccessMessage"] as string;
+    var error = TempData["ErrorMessage"] as string;
+}
+
+<div id="draftsConfig" class="d-none"
+    data-is-connected="@(Model.IsConnected ? "true" : "false")"></div>
+
+<form id="draftsAntiForgery" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">
+            eBay Drafts
+            @if (Model.Drafts.Count > 0)
+            {
+                <span class="text-muted fw-normal ms-1" style="font-size:0.85em;">(@Model.Drafts.Count)</span>
+            }
+            @if (Model.IsConnected)
+            {
+                <span id="syncIndicator" class="badge text-bg-secondary ms-2 fw-normal d-none" style="font-size:0.65em;">Syncing…</span>
+            }
+        </h1>
+        <p class="page-header-subtitle">Draft listings pulled from eBay, ready to finish and publish.</p>
+    </div>
+    <div class="page-header-actions">
+        @if (Model.IsConnected)
+        {
+            <button id="syncNowBtn" type="button" class="btn btn-outline-secondary">Sync from eBay</button>
+        }
+    </div>
+</div>
+
+<div id="syncError" class="alert alert-danger d-none"></div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+@if (!string.IsNullOrWhiteSpace(success))
+{
+    <div class="alert alert-success">@success</div>
+}
+
+@if (!Model.IsConnected)
+{
+    <div class="alert alert-warning">
+        <strong>eBay not connected.</strong> Connect your eBay account from the
+        <a asp-controller="Inventory" asp-action="ActiveInventory">Inventory</a> page to sync drafts.
+    </div>
+}
+else if (Model.Drafts.Count == 0)
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "tag",
+        Title = "No drafts found",
+        Message = "Click \"Sync from eBay\" above to pull your latest drafts."
+    })" />
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3" id="draftsList">
+        @foreach (var draft in Model.Drafts)
+        {
+            <div class="col" data-draft-id="@draft.DraftId">
+                <div class="card h-100">
+                    @if (!string.IsNullOrWhiteSpace(draft.CoverPhotoUrl))
+                    {
+                        <img src="@draft.CoverPhotoUrl" class="card-img-top" alt="Draft photo"
+                             style="height:180px;object-fit:contain;background:var(--clr-surface-2);" />
+                    }
+                    else
+                    {
+                        <div class="card-img-top d-flex align-items-center justify-content-center text-muted"
+                             style="height:180px;background:var(--clr-surface-2);">No photo</div>
+                    }
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title text-truncate" title="@draft.Title">
+                            @(draft.Title ?? "(Untitled draft)")
+                        </h6>
+                        <div class="small text-muted mb-2">
+                            @if (draft.Price.HasValue)
+                            {
+                                <span class="fw-semibold text-dark">
+                                    @(draft.Currency ?? "USD") @draft.Price.Value.ToString("F2")
+                                </span>
+                            }
+                            else
+                            {
+                                <span>No price set</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(draft.ConditionId))
+                            {
+                                <span class="ms-2">· @draft.ConditionId.Replace("_", " ")</span>
+                            }
+                        </div>
+                        <div class="mt-auto d-flex gap-2">
+                            <a asp-action="Edit" asp-route-id="@draft.DraftId"
+                               class="btn btn-primary btn-sm flex-fill">Edit &amp; Publish</a>
+                            <form asp-action="RemoveDraft" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@draft.DraftId" />
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Remove this draft from your local list?')">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/drafts-index.js" asp-append-version="true"></script>
+}

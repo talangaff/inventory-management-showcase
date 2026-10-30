@@ -1,0 +1,111 @@
+@model inventory_management.Models.CreateShelfUnitViewModel
+@{
+    var isEdit = Model.Id != Guid.Empty;
+    ViewData["Title"] = isEdit ? "Edit Shelving Unit" : "Add Shelving Unit";
+}
+
+<div class="form-card" style="max-width:640px;">
+    <div class="form-card-header">
+        <div class="form-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+        </div>
+        <div>
+            <h1>@ViewData["Title"]</h1>
+            <p>@(isEdit ? "Update this shelving unit's shelves or status." : "Create a new shelving unit to store items on.")</p>
+        </div>
+    </div>
+    <div class="form-card-body">
+        <form asp-controller="Shelf" asp-action="@(isEdit ? "Edit" : "Create")" method="post" novalidate>
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Identifier" class="form-label"></label>
+                <input asp-for="Identifier" class="form-control" />
+                <span asp-validation-for="Identifier" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ShelfCount" class="form-label"></label>
+                <input asp-for="ShelfCount" type="number" min="1" max="9" class="form-control" />
+                <span asp-validation-for="ShelfCount" class="text-danger"></span>
+                <div class="form-text">Maximum is 9 shelves per unit.</div>
+            </div>
+
+            @if (Model.StorageUnits.Any())
+            {
+                <div class="mb-3">
+                    <label asp-for="StorageUnitId" class="form-label"></label>
+                    <select asp-for="StorageUnitId" class="form-select">
+                        <option value="">-- None --</option>
+                        @foreach (var su in Model.StorageUnits)
+                        {
+                            <option value="@su.Id">@su.Identifier — @su.Name</option>
+                        }
+                    </select>
+                    <div class="form-text">Optionally place this shelf unit inside a storage unit.</div>
+                </div>
+            }
+
+            @if (isEdit && Model.ShelfStatuses.Count > 0)
+            {
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Shelf Statuses</label>
+                    <div class="form-text mb-2">A shelf cannot be set to Active Inventory if it contains items or boxes with items.</div>
+                    @for (var i = 0; i < Model.ShelfStatuses.Count; i++)
+                    {
+                        var slotNum = Model.ShelfStatuses[i].ShelfNumber;
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <span class="small fw-semibold" style="min-width:80px;">Shelf @Model.Identifier-@slotNum</span>
+                            <input type="hidden" name="ShelfStatuses[@i].ShelfNumber" value="@slotNum" />
+                            @{
+                                var slotStatusVal = Model.ShelfStatuses[i].Status;
+                            }
+                            <select name="ShelfStatuses[@i].Status" class="form-select form-select-sm" style="max-width:200px;">
+                                <option value="@((int)inventory_management.Models.ShelfStatus.ActiveInventory)"
+                                        selected="@(slotStatusVal == inventory_management.Models.ShelfStatus.ActiveInventory)">
+                                    Active Inventory
+                                </option>
+                                <option value="@((int)inventory_management.Models.ShelfStatus.Unlisted)"
+                                        selected="@(slotStatusVal == inventory_management.Models.ShelfStatus.Unlisted)">
+                                    Unlisted
+                                </option>
+                                <option value="@((int)inventory_management.Models.ShelfStatus.NeedsSorted)"
+                                        selected="@(slotStatusVal == inventory_management.Models.ShelfStatus.NeedsSorted)">
+                                    Needs Sorted
+                                </option>
+                            </select>
+                            <span class="text-danger small">
+                                @Html.ValidationMessage($"ShelfStatuses[{i}].Status")
+                            </span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">@(isEdit ? "Save Changes" : "Save Unit")</button>
+                <a asp-controller="Shelf" asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+
+        @if (isEdit)
+        {
+            <hr class="my-4" />
+            <form asp-controller="Shelf" asp-action="Delete" method="post"
+                  onsubmit="return confirm('Delete shelving unit \'@Model.Identifier\'? Items stored directly on its shelves will lose their location, and any boxes on it will be unlinked (not deleted).');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="btn btn-outline-danger btn-sm">Delete Shelving Unit</button>
+            </form>
+        }
+    </div>
+</div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

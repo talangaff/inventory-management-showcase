@@ -1,0 +1,169 @@
+@using System.Globalization
+@model inventory_management.Models.BulkRepricePageViewModel
+@{
+    ViewData["Title"] = "Bulk Reprice";
+    var changeRows = Model.Rows.Where(x => x.NewPrice.HasValue).ToList();
+    var skipCount = Model.Rows.Count - changeRows.Count;
+    var isPercent = Model.Mode == "percent";
+    var ruleText = isPercent
+        ? $"{Model.Amount.ToString("0.##")}% off"
+        : $"${Model.Amount:N2} off";
+    if (Model.MinPrice.HasValue)
+    {
+        ruleText += $", minimum ${Model.MinPrice.Value:N2}";
+    }
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">Bulk Reprice</h1>
+        <p class="page-header-subtitle">Lower the price of every listing that hasn't been repriced in a while.</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="BulkReprice" class="row g-3 align-items-end">
+            <div class="col-6 col-md-3">
+                <label for="repriceDays" class="form-label small fw-semibold">Not repriced in (days)</label>
+                <input id="repriceDays" name="days" type="number" class="form-control" min="0" step="1" value="@Model.Days" required />
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="repriceAmount" class="form-label small fw-semibold">Decrease by</label>
+                <div class="input-group">
+                    <input id="repriceAmount" name="amount" type="number" class="form-control" min="0.01" step="0.01" value="@Model.Amount.ToString(CultureInfo.InvariantCulture)" required />
+                    <select name="mode" class="form-select" style="max-width:5.5rem;" aria-label="Decrease type">
+                        <option value="percent" selected="@isPercent">%</option>
+                        <option value="dollar" selected="@(!isPercent)">$</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="repriceMinPrice" class="form-label small fw-semibold">Minimum price (optional)</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input id="repriceMinPrice" name="minPrice" type="number" class="form-control" min="0" step="0.01" placeholder="None" value="@Model.MinPrice?.ToString(CultureInfo.InvariantCulture)" />
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">Preview</button>
+            </div>
+        </form>
+        <p class="small text-muted mb-0 mt-3">
+            Prices that would fall below the minimum are set to the minimum. Items already at or below the minimum are left alone.
+            "Last repriced" is the newest price change of any kind (in this app or directly on eBay), or the listing date if it has never been repriced.
+        </p>
+    </div>
+</div>
+
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+else if (!Model.Rows.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "tag",
+        Title = $"Nothing to reprice",
+        Message = $"Every active listing has been repriced or listed within the last {Model.Days} days."
+    })" />
+}
+else
+{
+    <form id="repriceAntiForgeryForm" class="d-none">
+        @Html.AntiForgeryToken()
+    </form>
+
+    @* Rule as previewed — the JS applies exactly this, even if the form above is edited afterwards without re-previewing. *@
+    <div id="repriceRule" class="d-none"
+         data-mode="@Model.Mode"
+         data-amount="@Model.Amount.ToString(CultureInfo.InvariantCulture)"
+         data-min-price="@Model.MinPrice?.ToString(CultureInfo.InvariantCulture)"
+         data-rule-text="@ruleText"></div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <div class="small text-muted">
+            <strong class="text-body">@Model.Rows.Count</strong> item@(Model.Rows.Count != 1 ? "s" : "") not repriced in @Model.Days+ days ·
+            <strong class="text-body">@changeRows.Count</strong> will change (@ruleText)
+            @if (skipCount > 0)
+            {
+                <span>· @skipCount skipped</span>
+            }
+        </div>
+        <button type="button" id="repriceApplyBtn" class="btn btn-primary btn-sm" disabled>Apply to 0 selected</button>
+    </div>
+
+    <div id="repriceStatus" class="alert d-none" role="status" aria-live="polite"></div>
+
+    <div class="table-responsive table-card">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width:2.5rem;">
+                        <input type="checkbox" class="form-check-input" id="repriceSelectAll" aria-label="Select all" @(changeRows.Any() ? "checked" : "disabled") />
+                    </th>
+                    <th>Item</th>
+                    <th>Last repriced</th>
+                    <th class="text-end">Current</th>
+                    <th class="text-end">New</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    var daysAgo = (int)(DateTime.UtcNow - row.LastRepricedUtc).TotalDays;
+                    var willChange = row.NewPrice.HasValue;
+                    <tr class="reprice-row @(willChange ? "" : "text-muted")"
+                        data-listing-id="@row.ListingId"
+                        data-current-price="@row.CurrentPrice.ToString(CultureInfo.InvariantCulture)">
+                        <td>
+                            @if (willChange)
+                            {
+                                <input type="checkbox" class="form-check-input reprice-select" checked aria-label="Select @row.Title" />
+                            }
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2 align-items-center">
+                                @if (!string.IsNullOrWhiteSpace(row.CoverPhotoUrl))
+                                {
+                                    <img src="@row.CoverPhotoUrl" alt="" class="rounded flex-shrink-0" style="width:40px;height:40px;object-fit:contain;background:var(--clr-surface-2);" />
+                                }
+                                <a asp-action="Details" asp-route-id="@row.ItemId" class="text-reset text-decoration-none small" style="word-break:break-word;">@row.Title</a>
+                            </div>
+                        </td>
+                        <td class="small text-nowrap">
+                            @row.LastRepricedUtc.ToLocalTime().ToString("MMM d, yyyy")
+                            <div class="text-muted">@daysAgo days ago@(row.EverRepriced ? "" : " (listed)")</div>
+                        </td>
+                        <td class="text-end text-nowrap">$@row.CurrentPrice.ToString("N2")</td>
+                        <td class="text-end text-nowrap fw-semibold">
+                            @if (willChange)
+                            {
+                                <span>$@row.NewPrice!.Value.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </td>
+                        <td class="small reprice-row-status">
+                            @if (!willChange)
+                            {
+                                <span class="badge bg-secondary">@row.SkipReason</span>
+                            }
+                            else if (row.ClampedToMinimum)
+                            {
+                                <span class="badge bg-warning text-dark">Set to minimum</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/bulk-reprice.js" asp-append-version="true"></script>
+}

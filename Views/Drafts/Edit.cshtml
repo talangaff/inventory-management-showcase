@@ -1,0 +1,205 @@
+@model inventory_management.Models.DraftEditViewModel
+@{
+    ViewData["Title"] = Model.Title ?? "Edit Draft";
+    var success = TempData["SuccessMessage"] as string;
+    var error = TempData["ErrorMessage"] as string;
+}
+
+<div id="draftEditConfig" class="d-none"
+    data-draft-id="@Model.DraftId"
+    data-next-draft-id="@(Model.NextDraftId ?? "")"
+    data-draft-position="@Model.DraftPosition"
+    data-total-drafts="@Model.TotalDrafts"
+    data-description-template="@System.Web.HttpUtility.HtmlAttributeEncode(Model.DescriptionTemplate)"></div>
+
+<form id="draftAntiForgeryForm" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="page-header page-header-flex mb-3">
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-2">&larr; All Drafts</a>
+        @if (Model.TotalDrafts > 1)
+        {
+            <span class="text-muted small">Draft @Model.DraftPosition of @Model.TotalDrafts</span>
+        }
+    </div>
+    <div id="saveStatus" class="page-header-actions text-muted small"></div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger" id="errorAlert">@error</div>
+}
+@if (!string.IsNullOrWhiteSpace(success))
+{
+    <div class="alert alert-success" id="successAlert">@success</div>
+}
+
+<div class="row g-4">
+    <!-- Left column: photo + title -->
+    <div class="col-md-3">
+        @if (!string.IsNullOrWhiteSpace(Model.CoverPhotoUrl))
+        {
+            <img src="@Model.CoverPhotoUrl" class="img-fluid rounded mb-3"
+                 alt="Draft photo" style="max-height:260px;width:100%;object-fit:contain;background:var(--clr-surface-2);" />
+        }
+        else
+        {
+            <div class="rounded mb-3 d-flex align-items-center justify-content-center text-muted"
+                 style="height:200px;background:var(--clr-surface-2);">No photo</div>
+        }
+        <h5 class="fw-semibold">@(Model.Title ?? "(Untitled draft)")</h5>
+        @if (!string.IsNullOrWhiteSpace(Model.CategoryId))
+        {
+            <div class="small text-muted">Category ID: @Model.CategoryId</div>
+        }
+    </div>
+
+    <!-- Right column: edit form -->
+    <div class="col-md-9">
+        <div class="row g-3 mb-3">
+            <!-- Price -->
+            <div class="col-sm-6 col-md-4">
+                <label class="form-label fw-semibold">Price</label>
+                <div class="input-group">
+                    <span class="input-group-text" id="currencySymbol">
+                        @(Model.Currency == "USD" ? "$" : Model.Currency ?? "$")
+                    </span>
+                    <input type="number" id="draftPrice" class="form-control" step="0.01" min="0"
+                           value="@(Model.Price?.ToString("F2") ?? "")" placeholder="0.00" />
+                </div>
+            </div>
+
+            <!-- Condition -->
+            <div class="col-sm-6 col-md-4">
+                <label class="form-label fw-semibold">Condition</label>
+                <select id="draftCondition" class="form-select">
+                    <option value="">— Select —</option>
+                    @foreach (var cond in new[] {
+                        ("NEW", "New"),
+                        ("LIKE_NEW", "Like New"),
+                        ("NEW_OTHER", "New Other"),
+                        ("MANUFACTURER_REFURBISHED", "Manufacturer Refurbished"),
+                        ("SELLER_REFURBISHED", "Seller Refurbished"),
+                        ("USED_EXCELLENT", "Used – Excellent"),
+                        ("USED_VERY_GOOD", "Used – Very Good"),
+                        ("USED_GOOD", "Used – Good"),
+                        ("USED_ACCEPTABLE", "Used – Acceptable"),
+                        ("FOR_PARTS_OR_NOT_WORKING", "For Parts / Not Working")
+                    })
+                    {
+                        if (Model.ConditionId == cond.Item1)
+                        {
+                            <option value="@cond.Item1" selected="selected">@cond.Item2</option>
+                        }
+                        else
+                        {
+                            <option value="@cond.Item1">@cond.Item2</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        <!-- Condition Description -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Condition Description</label>
+            <textarea id="draftConditionDesc" class="form-control" rows="3"
+                      maxlength="1000" placeholder="Describe the item condition in detail…">@(Model.ConditionDescription ?? "")</textarea>
+            <div class="form-text text-end"><span id="condDescCount">0</span>/1000</div>
+        </div>
+
+        <!-- Weight & Size -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Package Weight &amp; Dimensions</label>
+            <div class="row g-2">
+                <div class="col-sm-3">
+                    <div class="input-group">
+                        <input type="number" id="draftWeightPounds" class="form-control" step="0.01" min="0"
+                               value="@(Model.WeightPounds?.ToString("F2") ?? "")" placeholder="0.00" />
+                        <span class="input-group-text">lb</span>
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="input-group">
+                        <input type="number" id="draftLength" class="form-control" step="0.1" min="0"
+                               value="@(Model.LengthIn?.ToString("F1") ?? "")" placeholder="L" />
+                        <span class="input-group-text">in</span>
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="input-group">
+                        <input type="number" id="draftWidth" class="form-control" step="0.1" min="0"
+                               value="@(Model.WidthIn?.ToString("F1") ?? "")" placeholder="W" />
+                        <span class="input-group-text">in</span>
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="input-group">
+                        <input type="number" id="draftHeight" class="form-control" step="0.1" min="0"
+                               value="@(Model.HeightIn?.ToString("F1") ?? "")" placeholder="H" />
+                        <span class="input-group-text">in</span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-text">Weight (lbs) · Length × Width × Height (inches)</div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label fw-semibold mb-0">Description (HTML)</label>
+                <button type="button" id="applyTemplateBtn" class="btn btn-outline-secondary btn-sm">
+                    Apply Template
+                </button>
+            </div>
+            <textarea id="draftDescription" class="form-control font-monospace" rows="10"
+                      placeholder="Enter HTML description…">@(Model.Description ?? "")</textarea>
+        </div>
+
+        <!-- Template Section -->
+        <div class="mb-4">
+            <button class="btn btn-link btn-sm p-0 text-muted" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#templateSection" aria-expanded="false">
+                Manage Description Template
+            </button>
+            <div class="collapse mt-2" id="templateSection">
+                <div class="card card-body bg-light">
+                    <label class="form-label fw-semibold small">HTML Template</label>
+                    <textarea id="descriptionTemplate" class="form-control font-monospace" rows="8"
+                              placeholder="Enter your HTML template here…">@Model.DescriptionTemplate</textarea>
+                    <div class="mt-2 d-flex gap-2">
+                        <button type="button" id="saveTemplateBtn" class="btn btn-sm btn-secondary">Save Template</button>
+                        <span id="templateSaveStatus" class="small text-muted align-self-center"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-3 flex-wrap">
+            <button type="button" id="saveForLaterBtn" class="btn btn-outline-primary btn-lg px-4">
+                Save for Later
+            </button>
+            <form asp-action="Publish" method="post" id="publishForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.DraftId" />
+                <button type="submit" id="publishBtn" class="btn btn-success btn-lg px-5">
+                    @if (Model.NextDraftId is not null)
+                    {
+                        <span>Publish &amp; Next Draft</span>
+                    }
+                    else
+                    {
+                        <span>Publish Listing</span>
+                    }
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/draft-edit.js" asp-append-version="true"></script>
+}

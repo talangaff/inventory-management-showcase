@@ -1,0 +1,88 @@
+@model List<inventory_management.Models.EbayPromotionViewModel>
+@{
+    ViewData["Title"] = "Promotions";
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">Active Promotions</h1>
+        <p class="page-header-subtitle">Coupons, sales, and discounts currently running on eBay.</p>
+    </div>
+</div>
+
+@if (Model == null || Model.Count == 0)
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "tag",
+        Title = "No active or scheduled promotions found",
+        Message = "Make sure your eBay account is connected and the sell.marketing scope is authorized (reconnect if you just added it)."
+    })" />
+}
+else
+{
+    <div class="table-responsive table-card">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Start</th>
+                    <th>End</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var promo in Model)
+                {
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(promo.PromotionHref))
+                            {
+                                <a href="@promo.PromotionHref" target="_blank" rel="noopener noreferrer">@promo.Name</a>
+                            }
+                            else
+                            {
+                                @promo.Name
+                            }
+                            @if (!string.IsNullOrWhiteSpace(promo.Description))
+                            {
+                                <div class="text-muted small">@promo.Description</div>
+                            }
+                        </td>
+                        <td>
+                            @{
+                                var typeLabel = promo.PromotionType switch
+                                {
+                                    "CODED_COUPON" => "Coupon",
+                                    "ORDER_DISCOUNT" => "Order Discount",
+                                    "SALE_PRICE" => "Sale Price",
+                                    "MARKDOWN_SALE" => "Markdown",
+                                    "VOLUME_DISCOUNT" => "Volume Discount",
+                                    _ => promo.PromotionType
+                                };
+                            }
+                            <span class="badge bg-secondary">@typeLabel</span>
+                        </td>
+                        <td>
+                            @{
+                                var statusClass = promo.Status switch
+                                {
+                                    "ACTIVE" => "bg-success",
+                                    "SCHEDULED" => "bg-primary",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass">@promo.Status</span>
+                        </td>
+                        <td class="text-nowrap">
+                            @(string.IsNullOrWhiteSpace(promo.StartDate) ? "—" : DateTime.Parse(promo.StartDate).ToLocalTime().ToString("MM/dd/yyyy"))
+                        </td>
+                        <td class="text-nowrap">
+                            @(string.IsNullOrWhiteSpace(promo.EndDate) ? "—" : DateTime.Parse(promo.EndDate).ToLocalTime().ToString("MM/dd/yyyy"))
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

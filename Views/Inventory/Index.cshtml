@@ -1,0 +1,210 @@
+@model inventory_management.Models.InventoryIndexViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    var tempError = TempData["InventoryError"] as string;
+    var tempSuccess = TempData["InventorySuccess"] as string;
+    var returnAction = Model.IsMissingDataPage ? "MissingData" : Model.IsUnprintedPage ? "UnprintedLabels" : "ActiveInventory";
+}
+
+<div id="inventoryConfig" class="d-none"
+    data-mode="@(Model.IsMissingDataPage ? "missing" : Model.IsUnprintedPage ? "unprinted" : "active")"
+    data-is-connected="@(Model.IsConnected ? "true" : "false")"
+    data-has-more="@(Model.HasMore ? "true" : "false")"
+    data-cursor="@Model.NextCursor"
+    data-sort="@Model.Sort"></div>
+
+<div id="bulkConfig" class="d-none"
+    data-shelf-units="@System.Text.Json.JsonSerializer.Serialize(Model.ShelfUnits.Select(u => new { u.Id, u.Identifier, u.ShelfCount, u.BarcodePrefix }))"
+    data-boxes="@System.Text.Json.JsonSerializer.Serialize(Model.Boxes.Select(b => new { b.Id, b.BoxIdentifier, b.BoxBarcode }))"
+    data-return-action="@returnAction"></div>
+
+<form id="bulkAntiForgeryForm" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">
+            @Model.PageTitle
+            @if (Model.TotalCount > 0)
+            {
+                <span class="text-muted fw-normal ms-1" style="font-size:0.85em;">(@Model.TotalCount)</span>
+            }
+            @if (Model.IsConnected)
+            {
+                <span id="syncIndicator" class="badge text-bg-secondary ms-2 fw-normal d-none" style="font-size:0.65em;">Syncing…</span>
+            }
+        </h1>
+        <p class="page-header-subtitle">
+            @(Model.IsMissingDataPage
+                ? "Active listings that still need a shelf or box location."
+                : Model.IsUnprintedPage
+                    ? "Listings whose barcode label hasn't been printed yet."
+                    : "Your active eBay listings and where each one lives.")
+        </p>
+    </div>
+    @if (Model.IsConnected)
+    {
+        <div class="page-header-actions">
+            <form asp-action="DisconnectEbay" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnAction" value="@returnAction" />
+                <button type="submit" class="btn btn-outline-danger btn-sm">Disconnect eBay</button>
+            </form>
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(tempError))
+{
+    <div class="alert alert-danger">@tempError</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(tempSuccess))
+{
+    <div class="alert alert-success">@tempSuccess</div>
+}
+
+<div id="inventoryAjaxStatus" class="alert d-none" role="alert"></div>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-warning">@Model.ErrorMessage</div>
+}
+
+@if (!Model.IsConnected)
+{
+    <div class="form-card">
+        <div class="form-card-header">
+            <div class="form-card-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                </svg>
+            </div>
+            <div>
+                <h2>Connect your eBay account</h2>
+                <p>Authorize once and this page will pull your active listings automatically.</p>
+            </div>
+        </div>
+        <div class="form-card-body">
+            <form asp-action="ConnectEbay" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">Connect eBay</button>
+            </form>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h2 class="h5 mb-0">
+                    @(Model.IsMissingDataPage
+                        ? "Missing Location Items"
+                        : "Active eBay Listings")
+                </h2>
+                <div class="d-flex gap-2">
+@if (Model.IsMissingDataPage && Model.Listings.Any())
+                    {
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="printAllBarcodesBtn">Print All QR Codes</button>
+                    }
+                    @if (Model.IsUnprintedPage && Model.Listings.Any())
+                    {
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="printAllUnprintedBtn">Print All &amp; Mark Printed</button>
+                    }
+                </div>
+            </div>
+
+            @if (!Model.Listings.Any())
+            {
+                <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+                    Icon = "box",
+                    Title = Model.IsMissingDataPage ? "Nothing missing a location" : Model.IsUnprintedPage ? "All labels printed" : "No active listings found",
+                    Message = Model.IsMissingDataPage ? "Every active listing has a shelf or box assigned." : Model.IsUnprintedPage ? "Every listing has a printed barcode label." : "Connect eBay and sync to see your listings here."
+                })" />
+            }
+            else
+            {
+                var returnAction2 = Model.IsMissingDataPage ? "MissingData" : Model.IsUnprintedPage ? "UnprintedLabels" : "ActiveInventory";
+                <div class="d-flex flex-column flex-sm-row gap-2 mb-3 align-items-sm-center">
+                    <input id="inventorySearchInput" type="search" class="form-control" placeholder="Search by title, item ID, location, or box..." />
+                    <div class="d-flex gap-1 flex-wrap flex-shrink-0">
+                        @{
+                            var sortOptions = new[]
+                            {
+                                ("title", "Title"),
+                                ("date_desc", "Date ↓"),
+                                ("date_asc", "Date ↑"),
+                                ("price_desc", "Price ↓"),
+                                ("price_asc", "Price ↑"),
+                            };
+                        }
+                        @foreach (var (sortVal, sortLabel) in sortOptions)
+                        {
+                            var isActive = Model.Sort == sortVal;
+                            <a href="@Url.Action(returnAction2, new { sort = sortVal })"
+                               class="btn btn-sm @(isActive ? "btn-secondary" : "btn-outline-secondary")">@sortLabel</a>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-2" id="bulkSelectAllRow">
+                    <div class="form-check mb-0">
+                        <input type="checkbox" class="form-check-input" id="bulkSelectAllCheckbox" />
+                        <label class="form-check-label small" for="bulkSelectAllCheckbox">Select all visible</label>
+                    </div>
+                    <span class="badge bg-secondary d-none" id="bulkSelectedCount">0 selected</span>
+                </div>
+                <ul id="inventoryList" class="list-group list-group-flush">
+                    <partial name="_InventoryItems" model="Model" />
+                </ul>
+                <div id="inventoryLoadSentinel" class="py-3 text-center small text-muted @(Model.HasMore ? "" : "d-none")">
+                    Loading more...
+                </div>
+                <div class="text-center @(Model.HasMore ? "" : "d-none")" id="inventoryLoadMoreWrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="inventoryLoadMoreBtn">Load more</button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div id="bulkActionBar" class="d-none" style="position:fixed;bottom:0;left:0;right:0;z-index:1050;background:var(--paper);border-top:1px solid var(--clr-border);box-shadow:0 -2px 8px rgba(0,0,0,.12);padding:10px 12px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+        <strong id="bulkBarCount" class="text-nowrap small">0 selected</strong>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkCancelBtn">Cancel</button>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex align-items-end gap-2 flex-wrap">
+            <div class="d-flex gap-1 flex-wrap">
+                <div>
+                    <label class="form-label small mb-1">Shelving Unit</label>
+                    <select id="bulkShelfUnitSelect" class="form-select form-select-sm" style="min-width:120px;max-width:180px;"></select>
+                </div>
+                <div>
+                    <label class="form-label small mb-1">Shelf</label>
+                    <select id="bulkShelfNumberSelect" class="form-select form-select-sm" style="min-width:60px;max-width:80px;"></select>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-success align-self-end" id="bulkAssignShelfBtn">Assign Shelf</button>
+        </div>
+
+        <div class="d-flex align-items-end gap-2">
+            <div>
+                <label class="form-label small mb-1">Box</label>
+                <select id="bulkBoxSelect" class="form-select form-select-sm" style="min-width:120px;max-width:180px;"></select>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary align-self-end" id="bulkAssignBoxBtn">Assign Box</button>
+        </div>
+
+        <div class="d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-outline-danger" id="bulkRemoveLocationBtn">Remove Location</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+    <script src="~/js/barcode-print.js" asp-append-version="true"></script>
+    <script src="~/js/inventory-index.js" asp-append-version="true"></script>
+}

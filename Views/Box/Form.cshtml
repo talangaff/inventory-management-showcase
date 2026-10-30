@@ -1,0 +1,152 @@
+@model inventory_management.Models.BoxFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Box" : "Add Box";
+}
+
+<div class="form-card">
+    <div class="form-card-header">
+        <div class="form-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+        </div>
+        <div>
+            <h1>@ViewData["Title"]</h1>
+            <p>@(isEdit ? "Update this box's identifier or storage location." : "Add a new box to track items in.")</p>
+        </div>
+    </div>
+    <div class="form-card-body">
+            <form asp-controller="Box" asp-action="@(isEdit ? "Edit" : "Create")" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <input asp-for="Id" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="BoxIdentifier" class="form-label"></label>
+                    <input asp-for="BoxIdentifier" class="form-control" />
+                    <span asp-validation-for="BoxIdentifier" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Location Type</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="LocationType" id="locTypeShelf"
+                                   value="shelf" @(Model.LocationType != "storage_unit" && Model.LocationType != "transit" ? "checked" : "") />
+                            <label class="form-check-label" for="locTypeShelf">Shelf Slot</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="LocationType" id="locTypeStorageUnit"
+                                   value="storage_unit" @(Model.LocationType == "storage_unit" ? "checked" : "") />
+                            <label class="form-check-label" for="locTypeStorageUnit">Storage Unit</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="LocationType" id="locTypeTransit"
+                                   value="transit" @(Model.LocationType == "transit" ? "checked" : "") />
+                            <label class="form-check-label" for="locTypeTransit">Transit Box</label>
+                        </div>
+                    </div>
+                    <div class="form-text">Transit boxes are used for transporting items and don't have a storage location.</div>
+                </div>
+
+                <div id="shelfFields" @(Model.LocationType != "shelf" ? "style=\"display:none\"" : "")>
+                    @if (Model.ShelfUnits.Any())
+                    {
+                        <div class="mb-3">
+                            <label asp-for="ShelfUnitId" class="form-label"></label>
+                            <select asp-for="ShelfUnitId" class="form-select" id="boxShelfUnit">
+                                @foreach (var unit in Model.ShelfUnits)
+                                {
+                                    <option value="@unit.Id" data-shelf-count="@unit.ShelfCount">@unit.Identifier (@unit.ShelfCount shelves)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ShelfNumber" class="form-label"></label>
+                            <select asp-for="ShelfNumber" class="form-select" id="boxShelfNumber"></select>
+                            <span asp-validation-for="ShelfNumber" class="text-danger"></span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning p-2 small">No shelving units available. <a asp-controller="Shelf" asp-action="Create">Add one</a>.</div>
+                    }
+                </div>
+
+                <div id="storageUnitFields" @(Model.LocationType == "storage_unit" ? "" : "style=\"display:none\"")>
+                    @if (Model.StorageUnits.Any())
+                    {
+                        <div class="mb-3">
+                            <label asp-for="StorageUnitId" class="form-label"></label>
+                            <select asp-for="StorageUnitId" class="form-select">
+                                <option value="">-- Select storage unit --</option>
+                                @foreach (var su in Model.StorageUnits)
+                                {
+                                    <option value="@su.Id">@su.Identifier — @su.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="StorageUnitId" class="text-danger"></span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning p-2 small">No storage units available. <a asp-controller="StorageUnit" asp-action="Create">Add one</a>.</div>
+                    }
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">@(isEdit ? "Save Changes" : "Create Box")</button>
+                    <a asp-controller="Box" asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const shelfRadio = document.getElementById("locTypeShelf");
+        const suRadio = document.getElementById("locTypeStorageUnit");
+        const transitRadio = document.getElementById("locTypeTransit");
+        const shelfFields = document.getElementById("shelfFields");
+        const suFields = document.getElementById("storageUnitFields");
+
+        function updateLocationFields() {
+            const useShelf = shelfRadio && shelfRadio.checked;
+            const useStorage = suRadio && suRadio.checked;
+            if (shelfFields) shelfFields.style.display = useShelf ? "" : "none";
+            if (suFields) suFields.style.display = useStorage ? "" : "none";
+        }
+
+        if (shelfRadio) shelfRadio.addEventListener("change", updateLocationFields);
+        if (suRadio) suRadio.addEventListener("change", updateLocationFields);
+        if (transitRadio) transitRadio.addEventListener("change", updateLocationFields);
+
+        const unitSelect = document.getElementById("boxShelfUnit");
+        const shelfSelect = document.getElementById("boxShelfNumber");
+
+        function fillShelfNumbers() {
+            if (!unitSelect || !shelfSelect) return;
+            const selected = unitSelect.options[unitSelect.selectedIndex];
+            const count = Number(selected?.dataset?.shelfCount || "0");
+            const previous = shelfSelect.value;
+            shelfSelect.innerHTML = "";
+            for (let i = count; i >= 1; i--) {
+                const option = document.createElement("option");
+                option.value = String(i);
+                option.textContent = String(i);
+                shelfSelect.appendChild(option);
+            }
+            if (previous && Number(previous) <= count) {
+                shelfSelect.value = previous;
+            }
+        }
+
+        if (unitSelect) {
+            fillShelfNumbers();
+            unitSelect.addEventListener("change", fillShelfNumbers);
+        }
+    </script>
+}

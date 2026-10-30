@@ -1,0 +1,364 @@
+@model inventory_management.Models.NeedsAttentionPageViewModel
+@{
+    ViewData["Title"] = "Needs Attention";
+    var staleItems = Model.StaleItems;
+    // Every current Needs Attention category is summed here for the header count and empty
+    // state — add any future category's list to this line too (and to
+    // AttentionRules.GetTotalNeedsAttentionCountAsync, which the nav badge reads from, so the
+    // two counts can never drift apart).
+    var totalCount = staleItems.Count + Model.SoldOutWithBackstock.Count + Model.NeedsUnitResolution.Count + Model.Unclassified.Count + Model.MissingShippingCost.Count;
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">
+            Needs Attention
+            <span class="badge bg-warning text-dark fw-normal ms-1" style="font-size:0.65em;" id="attentionPageCount" role="status" aria-live="polite">@totalCount item@(totalCount != 1 ? "s" : "")</span>
+        </h1>
+        <p class="page-header-subtitle">
+            Needs classification, stale, sold-out-with-backstock, and unit-resolution items that need a look.
+        </p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-action="BulkReprice" class="btn btn-outline-primary btn-sm">Bulk Reprice</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm @(staleItems.Any() ? "" : "d-none")" id="attentionIgnoreAllBtn">Ignore all for 30 days</button>
+    </div>
+</div>
+
+<form id="attentionAntiForgeryForm" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div id="attentionAjaxStatus" class="alert d-none" role="alert" aria-live="polite"></div>
+
+<div id="attentionEmptyState" class="@(totalCount > 0 ? "d-none" : "")">
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "search",
+        Title = "No items need attention right now",
+        Message = "Stale listings, sold-out backstock, and units needing resolution will show up here."
+    })" />
+</div>
+
+@if (Model.Unclassified.Any())
+{
+    <div class="mb-4" id="unclassifiedSection">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Needs classification</div>
+        <div class="row g-3" id="unclassifiedCardList">
+            @foreach (var item in Model.Unclassified)
+            {
+                <div class="col-12 attention-item unclassified-card" data-item-id="@item.ItemId">
+                    <div class="card border-0 shadow-sm border-start border-4 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex gap-3 align-items-start flex-wrap">
+                                @if (!string.IsNullOrWhiteSpace(item.CoverPhotoUrl))
+                                {
+                                    <img src="@item.CoverPhotoUrl" alt="Cover" class="rounded flex-shrink-0" style="width:64px;height:64px;object-fit:contain;background:var(--clr-surface-2);" />
+                                }
+                                else
+                                {
+                                    <div class="rounded flex-shrink-0 bg-light d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                                        <span class="text-muted small">No img</span>
+                                    </div>
+                                }
+                                <div class="flex-grow-1" style="min-width:220px;">
+                                    <a asp-action="Details" asp-route-id="@item.ItemId" class="fw-semibold text-dark text-decoration-none d-block" style="word-break:break-word;">@item.Title</a>
+                                    <div class="small text-muted mb-2">@(item.CurrencyId ?? "USD") @(item.CurrentPrice?.ToString("N2") ?? "—") — not yet classified as Owned or Consignment</div>
+
+                                    <div class="d-flex gap-2 flex-wrap mb-2">
+                                        <button type="button" class="btn btn-sm btn-outline-primary unclassified-owned-toggle-btn">Owned</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary unclassified-consignment-toggle-btn">Consignment</button>
+                                        @if (item.MostRecentConsignor != null)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-warning unclassified-quick-consignor-btn" data-consignor-id="@item.MostRecentConsignor.Id">@item.MostRecentConsignor.Name Consignment</button>
+                                        }
+                                    </div>
+
+                                    <div class="d-none unclassified-owned-form d-flex gap-2 align-items-center flex-wrap">
+                                        <span class="small text-muted">Purchase cost (0 if free / already owned)</span>
+                                        <div class="input-group input-group-sm" style="max-width:140px;">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control unclassified-cost-input" step="0.01" min="0" placeholder="0.00" aria-label="Purchase cost" />
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary unclassified-owned-save-btn">Save</button>
+                                    </div>
+
+                                    <div class="d-none unclassified-consignment-form d-flex gap-2 align-items-center flex-wrap">
+                                        @if (item.ConsignorOptions.Any())
+                                        {
+                                            <select class="form-select form-select-sm unclassified-consignor-select" style="max-width:220px;" aria-label="Consignor">
+                                                @foreach (var opt in item.ConsignorOptions)
+                                                {
+                                                    <option value="@opt.Id">@opt.Name (@opt.DefaultSplitPercent.ToString("0.##")% to them)</option>
+                                                }
+                                            </select>
+                                            <button type="button" class="btn btn-sm btn-primary unclassified-consignment-save-btn">Save</button>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted">No consignors yet — <a asp-controller="Consignors" asp-action="Index">add one first</a>.</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (Model.MissingShippingCost.Any())
+{
+    <div class="mb-4" id="missingShippingCostSection">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Missing shipping cost</div>
+        <div class="row g-3" id="missingShippingCostCardList">
+            @foreach (var item in Model.MissingShippingCost)
+            {
+                <div class="col-12 attention-item missing-shipping-cost-card" data-order-id="@item.OrderId">
+                    <div class="card border-0 shadow-sm border-start border-4 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex gap-3 align-items-start flex-wrap">
+                                @if (!string.IsNullOrWhiteSpace(item.ItemPhotoUrl))
+                                {
+                                    <img src="@item.ItemPhotoUrl" alt="Cover" class="rounded flex-shrink-0" style="width:64px;height:64px;object-fit:contain;background:var(--clr-surface-2);" />
+                                }
+                                else
+                                {
+                                    <div class="rounded flex-shrink-0 bg-light d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                                        <span class="text-muted small">No img</span>
+                                    </div>
+                                }
+                                <div class="flex-grow-1" style="min-width:220px;">
+                                    <div class="fw-semibold" style="word-break:break-word;">@item.ItemName</div>
+                                    <div class="small text-muted mb-2">
+                                        Order @item.OrderId — @item.BuyerName
+                                        @if (item.OrderCreatedAtUtc.HasValue)
+                                        {
+                                            <span>(@item.OrderCreatedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy"))</span>
+                                        }
+                                        — eBay hasn't reported a shipping cost for this order yet.
+                                    </div>
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                                        <a href="@item.EbayOrderUrl" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">View on eBay</a>
+                                        <div class="input-group input-group-sm" style="max-width:140px;">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control missing-shipping-cost-input" step="0.01" min="0" placeholder="0.00" aria-label="Shipping cost" />
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary missing-shipping-cost-save-btn">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (Model.NeedsUnitResolution.Any())
+{
+    <div class="mb-4" id="unitResolutionSection">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Needs unit resolved</div>
+        <div class="row g-3" id="unitResolutionCardList">
+            @foreach (var item in Model.NeedsUnitResolution)
+            {
+                <div class="col-12 attention-item unit-resolution-card" data-item-id="@item.ItemId">
+                    <div class="card border-0 shadow-sm border-start border-4 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex gap-3 align-items-start flex-wrap">
+                                @if (!string.IsNullOrWhiteSpace(item.CoverPhotoUrl))
+                                {
+                                    <img src="@item.CoverPhotoUrl" alt="Cover" class="rounded flex-shrink-0" style="width:64px;height:64px;object-fit:contain;background:var(--clr-surface-2);" />
+                                }
+                                else
+                                {
+                                    <div class="rounded flex-shrink-0 bg-light d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                                        <span class="text-muted small">No img</span>
+                                    </div>
+                                }
+                                <div class="flex-grow-1" style="min-width:220px;">
+                                    <a asp-action="Details" asp-route-id="@item.ItemId" class="fw-semibold text-dark text-decoration-none d-block" style="word-break:break-word;">@item.Title</a>
+                                    <div class="small text-warning fw-semibold mb-2">A sale sold — which unit shipped?</div>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <select class="form-select form-select-sm unit-resolution-select" style="max-width:280px;flex:1 1 200px;" aria-label="Which unit sold">
+                                            @foreach (var opt in item.UnitOptions)
+                                            {
+                                                <option value="@opt.UnitId">@opt.LocationDisplay (@opt.Barcode)</option>
+                                            }
+                                        </select>
+                                        <button type="button" class="btn btn-sm btn-warning unit-resolution-confirm-btn">Confirm</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (Model.SoldOutWithBackstock.Any())
+{
+    <div class="mb-4">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Sold out — backstock available</div>
+        <div class="row g-3">
+            @foreach (var item in Model.SoldOutWithBackstock)
+            {
+                <div class="col-12 attention-item">
+                    <div class="card border-0 shadow-sm border-start border-4 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex gap-3 align-items-start flex-wrap">
+                                @if (!string.IsNullOrWhiteSpace(item.CoverPhotoUrl))
+                                {
+                                    <img src="@item.CoverPhotoUrl" alt="Cover" class="rounded flex-shrink-0" style="width:64px;height:64px;object-fit:contain;background:var(--clr-surface-2);" />
+                                }
+                                else
+                                {
+                                    <div class="rounded flex-shrink-0 bg-light d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                                        <span class="text-muted small">No img</span>
+                                    </div>
+                                }
+                                <div class="flex-grow-1" style="min-width:220px;">
+                                    <a asp-action="Details" asp-route-id="@item.ItemId" class="fw-semibold text-dark text-decoration-none d-block" style="word-break:break-word;">@item.Title</a>
+                                    <div class="small text-warning fw-semibold mb-2">@item.BackstockCount backstock unit@(item.BackstockCount != 1 ? "s" : "") available</div>
+                                    <form asp-action="RelistFromBackstock" method="post" class="d-flex gap-2 flex-wrap relist-backstock-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="itemId" value="@item.ItemId" />
+                                        <input type="number" name="count" class="form-control form-control-sm" style="max-width:90px;" min="1" max="@item.BackstockCount" value="@item.BackstockCount" aria-label="Number of units to relist" />
+                                        <button type="submit" class="btn btn-sm btn-warning">Relist from backstock</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (staleItems.Any())
+{
+    <div class="mb-4">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Stale — no recent activity</div>
+        <div class="row g-3" id="attentionCardList">
+            @foreach (var item in staleItems)
+            {
+                var daysStale = (int)(DateTime.UtcNow - item.ReferenceDateUtc).TotalDays;
+                <div class="col-12 attention-item attention-card" data-item-id="@item.ItemId">
+                    <div class="card border-0 shadow-sm border-start border-4 border-warning">
+                        <div class="card-body">
+                            <div class="d-flex gap-3 align-items-start flex-wrap">
+                                @if (!string.IsNullOrWhiteSpace(item.CoverPhotoUrl))
+                                {
+                                    <img src="@item.CoverPhotoUrl" alt="Cover" class="rounded flex-shrink-0"
+                                         style="width:64px;height:64px;object-fit:contain;background:var(--clr-surface-2);" />
+                                }
+                                else
+                                {
+                                    <div class="rounded flex-shrink-0 bg-light d-flex align-items-center justify-content-center"
+                                         style="width:64px;height:64px;">
+                                        <span class="text-muted small">No img</span>
+                                    </div>
+                                }
+                                <div class="flex-grow-1" style="min-width:220px;">
+                                    <a asp-action="Details" asp-route-id="@item.ItemId"
+                                       class="fw-semibold text-dark text-decoration-none d-block"
+                                       style="word-break:break-word;">@item.Title</a>
+                                    <div class="small text-muted mb-1">Item ID: <span class="font-monospace">@item.ItemId</span></div>
+                                    <div class="small text-warning fw-semibold mb-2">
+                                        Stale since @item.ReferenceDateUtc.ToLocalTime().ToString("MMM d, yyyy") (@daysStale days)
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap attention-price-form"
+                                         data-purchase-cost="@(item.OwnershipType == "Owned" ? item.PurchaseCost?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) : null)">
+                                        <span class="small text-muted">Current: @(item.CurrencyId ?? "USD") @(item.CurrentPrice?.ToString("N2") ?? "—")</span>
+                                        <div class="input-group input-group-sm" style="max-width:160px;">
+                                            <span class="input-group-text">@(item.CurrencyId ?? "USD")</span>
+                                            <input type="number" class="form-control attention-price-input" step="0.01" min="0.01"
+                                                   value="@(item.CurrentPrice?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                   placeholder="0.00" aria-label="New price" />
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm attention-update-price-btn">Update Price</button>
+                                        @if (item.OwnershipType == "Owned" && item.PurchaseCost.HasValue)
+                                        {
+                                            <span class="small fw-semibold attention-margin-readout" aria-live="polite"></span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column gap-2 flex-shrink-0" style="min-width:170px;">
+                                    <a asp-action="Details" asp-route-id="@item.ItemId" class="btn btn-outline-primary btn-sm">Review</a>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm attention-ignore-30-btn">Ignore for 30 days</button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm attention-ignore-permanent-btn">Ignore permanently</button>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="small fw-semibold text-muted text-uppercase mb-2">Price history</div>
+                                @if (item.PriceHistory.Count > 0)
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>From</th>
+                                                    <th>To</th>
+                                                    <th>Change</th>
+                                                    <th>Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var h in item.PriceHistory)
+                                                {
+                                                    var diff = h.NewPrice - h.OldPrice;
+                                                    var changeClass = diff < 0 ? "text-danger" : (diff > 0 ? "text-success" : "text-muted");
+                                                    var changeSign = diff < 0 ? "−" : (diff > 0 ? "+" : "");
+                                                    <tr>
+                                                        <td class="small">@h.ReducedAtUtc.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                                        <td class="small">$@h.OldPrice.ToString("N2")</td>
+                                                        <td class="small">$@h.NewPrice.ToString("N2")</td>
+                                                        <td class="small @changeClass">@changeSign$@Math.Abs(diff).ToString("N2")</td>
+                                                        <td class="small">
+                                                            @if (h.ChangeType == "Manual")
+                                                            {
+                                                                <span class="badge bg-primary">Manual</span>
+                                                            }
+                                                            else if (h.ChangeType == "External")
+                                                            {
+                                                                <span class="badge bg-info text-dark">External (eBay)</span>
+                                                            }
+                                                            else if (h.ChangeType == "Bulk")
+                                                            {
+                                                                <span class="badge bg-warning text-dark">Bulk</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary">Auto</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="small text-muted mb-0">No price changes recorded since it was listed on @item.ListedAtUtc.ToLocalTime().ToString("MMM d, yyyy").</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/margin-calculator.js" asp-append-version="true"></script>
+    <script src="~/js/needs-attention.js" asp-append-version="true"></script>
+}

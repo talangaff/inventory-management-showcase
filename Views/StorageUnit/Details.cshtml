@@ -1,0 +1,156 @@
+@model inventory_management.Models.StorageUnitDetailsViewModel
+@{
+    ViewData["Title"] = $"Storage Unit {Model.Identifier}";
+}
+
+<div class="page-header page-header-flex mb-3">
+    <div>
+        <h1 class="page-header-title">@Model.Name</h1>
+        <p class="page-header-subtitle">@Model.Identifier &bull; @Model.BarcodeNumber</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-controller="StorageUnit" asp-action="Index" class="btn btn-sm btn-outline-secondary">Back</a>
+    </div>
+</div>
+
+@if (!Model.ShelfUnits.Any() && !Model.Boxes.Any() && !Model.DirectItems.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "box",
+        Title = "This storage unit is empty",
+        Message = "Assign shelving units or boxes to it, or scan items directly to it."
+    })" />
+}
+
+@if (Model.ShelfUnits.Any())
+{
+    <h5 class="mt-4 mb-2">Shelving Units</h5>
+    <div class="table-responsive table-card mb-4">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Identifier</th>
+                    <th>Shelves</th>
+                    <th>Items (direct)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.ShelfUnits)
+                {
+                    <tr>
+                        <td class="fw-semibold">@s.Identifier</td>
+                        <td>@s.ShelfCount</td>
+                        <td>@s.ItemCount</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a asp-controller="Shelf" asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-outline-primary">View</a>
+                                <form asp-controller="StorageUnit" asp-action="RemoveShelfUnit" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="storageUnitId" value="@Model.Id" />
+                                    <input type="hidden" name="shelfUnitId" value="@s.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Unlink</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (Model.Boxes.Any())
+{
+    <h5 class="mt-2 mb-2">Boxes</h5>
+    <div class="table-responsive table-card mb-4">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Box</th>
+                    <th>Items</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.Boxes)
+                {
+                    <tr>
+                        <td class="fw-semibold">Box-@b.BoxIdentifier</td>
+                        <td>@b.ItemCount</td>
+                        <td class="text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a asp-controller="Box" asp-action="Details" asp-route-id="@b.Id" class="btn btn-sm btn-outline-primary">View</a>
+                                <form asp-controller="StorageUnit" asp-action="RemoveBox" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="storageUnitId" value="@Model.Id" />
+                                    <input type="hidden" name="boxId" value="@b.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Unlink</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (Model.DirectItems.Any())
+{
+    <div class="d-flex align-items-center gap-2 mt-2 mb-2">
+        <h5 class="mb-0">Items Directly Here</h5>
+        <div class="form-check mb-0 ms-2">
+            <input type="checkbox" class="form-check-input" id="selectAllCheckbox" />
+            <label class="form-check-label small" for="selectAllCheckbox">Select all</label>
+        </div>
+    </div>
+    <div class="row g-3">
+        @foreach (var item in Model.DirectItems)
+        {
+            <div class="col-12 col-sm-6 col-md-4 bulk-select-item">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <input type="checkbox" class="form-check-input bulk-item-checkbox flex-shrink-0 mt-1" data-item-id="@item.ItemId" />
+                        @if (!string.IsNullOrWhiteSpace(item.CoverPhotoUrl))
+                        {
+                            <img src="@item.CoverPhotoUrl" alt="Photo" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="width:56px;height:56px;font-size:11px;flex-shrink:0;">No image</div>
+                        }
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="fw-semibold small text-truncate">@item.Title</div>
+                            <div class="text-muted small"><span class="font-monospace">@item.ItemId</span></div>
+                            <form asp-controller="StorageUnit" asp-action="RemoveItem" method="post" class="mt-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="storageUnitId" value="@Model.Id" />
+                                <input type="hidden" name="itemId" value="@item.ItemId" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this item from storage unit?');">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<partial name="_BulkItemActionsBar" model="(inventory_management.Models.BulkItemActionsConfigViewModel)ViewBag.BulkConfig" />
+
+@section Scripts {
+    <script src="~/js/bulk-item-actions.js" asp-append-version="true"></script>
+    <script>
+        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener("change", () => {
+                const checked = selectAllCheckbox.checked;
+                document.querySelectorAll(".bulk-item-checkbox").forEach((cb) => {
+                    cb.checked = checked;
+                    cb.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+            });
+        }
+    </script>
+}

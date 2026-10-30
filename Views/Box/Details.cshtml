@@ -1,0 +1,120 @@
+@model inventory_management.Models.BoxDetailsViewModel
+@{
+    ViewData["Title"] = $"Box {Model.BoxIdentifier}";
+}
+
+<div class="page-header page-header-flex mb-3">
+    <div>
+        <h1 class="page-header-title">Box @Model.BoxIdentifier</h1>
+        <p class="page-header-subtitle">
+            @if (Model.IsTransitBox)
+            {
+                @:Transit Box — no storage location
+            }
+            else if (Model.StorageUnitId.HasValue)
+            {
+                @:Storage Unit: <a asp-controller="StorageUnit" asp-action="Details" asp-route-id="@Model.StorageUnitId">@Model.StorageUnitName (@Model.StorageUnitIdentifier)</a>
+            }
+            else if (!string.IsNullOrEmpty(Model.ShelfLocation))
+            {
+                @:Shelf @Model.ShelfLocation
+            }
+        </p>
+    </div>
+    <div class="page-header-actions">
+        @if (Model.StorageUnitId.HasValue)
+        {
+            <a asp-controller="StorageUnit" asp-action="Details" asp-route-id="@Model.StorageUnitId" class="btn btn-outline-secondary btn-sm">View Storage Unit</a>
+        }
+        else if (Model.ShelfUnitId.HasValue)
+        {
+            <a asp-controller="Shelf" asp-action="Details" asp-route-id="@Model.ShelfUnitId" class="btn btn-outline-secondary btn-sm">View Shelf</a>
+        }
+        <a asp-controller="Box" asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to Boxes</a>
+    </div>
+</div>
+
+<div class="mb-3">
+    <input id="searchInput" type="search" class="form-control" placeholder="Search items by title or item ID..." />
+</div>
+
+@if (!Model.Items.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "box",
+        Title = "This box is empty",
+        Message = "Items assigned to this box will show up here."
+    })" />
+}
+else
+{
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="form-check mb-0">
+            <input type="checkbox" class="form-check-input" id="selectAllCheckbox" />
+            <label class="form-check-label small" for="selectAllCheckbox">Select all visible</label>
+        </div>
+        <span class="text-muted ms-auto">@Model.Items.Count item@(Model.Items.Count != 1 ? "s" : "")</span>
+    </div>
+    <div class="row g-2">
+        @foreach (var item in Model.Items)
+        {
+            <div class="col-12 storage-item bulk-select-item" data-search="@($"{item.Title} {item.ItemId}".ToLowerInvariant())">
+                <div class="d-flex flex-wrap align-items-center gap-2 p-2 border rounded">
+                    <input type="checkbox" class="form-check-input bulk-item-checkbox flex-shrink-0" data-item-id="@item.ItemId" />
+                    @if (!string.IsNullOrEmpty(item.CoverPhotoUrl))
+                    {
+                        <img src="@item.CoverPhotoUrl" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
+                    }
+                    else
+                    {
+                        <div style="width:56px;height:56px;background:var(--clr-surface-2);border-radius:4px;flex-shrink:0;" class="d-flex align-items-center justify-content-center">
+                            <span class="text-muted small">No img</span>
+                        </div>
+                    }
+                    <div style="min-width:0;flex:1 1 150px;">
+                        <a asp-controller="Inventory" asp-action="Details" asp-route-id="@item.ItemId" class="fw-semibold text-decoration-none text-dark" style="word-break:break-word;">@item.Title</a>
+                        <div class="small text-muted"><span class="font-monospace">@item.ItemId</span></div>
+                    </div>
+                    <form asp-controller="Box" asp-action="RemoveItem" method="post" class="ms-auto flex-shrink-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="boxId" value="@Model.BoxId" />
+                        <input type="hidden" name="itemId" value="@item.ItemId" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this item from box?');">Remove</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<partial name="_BulkItemActionsBar" model="(inventory_management.Models.BulkItemActionsConfigViewModel)ViewBag.BulkConfig" />
+
+@section Scripts {
+    <script src="~/js/bulk-item-actions.js" asp-append-version="true"></script>
+    <script>
+        const searchInput = document.getElementById("searchInput");
+        const items = Array.from(document.querySelectorAll(".storage-item"));
+
+        if (searchInput) {
+            searchInput.addEventListener("input", () => {
+                const term = searchInput.value.trim().toLowerCase();
+                items.forEach((el) => {
+                    const searchable = el.dataset.search || "";
+                    const matches = !term || searchable.includes(term);
+                    el.classList.toggle("d-none", !matches);
+                });
+            });
+        }
+
+        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener("change", () => {
+                const checked = selectAllCheckbox.checked;
+                document.querySelectorAll(".storage-item:not(.d-none) .bulk-item-checkbox").forEach((cb) => {
+                    cb.checked = checked;
+                    cb.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+            });
+        }
+    </script>
+}

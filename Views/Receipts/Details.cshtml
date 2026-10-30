@@ -1,0 +1,126 @@
+@model inventory_management.Models.ReceiptDetailsViewModel
+@{
+    ViewData["Title"] = "Receipt " + Model.ReceiptDate.ToString("MMM d, yyyy");
+}
+
+<form id="receiptAntiForgeryForm" class="d-none">@Html.AntiForgeryToken()</form>
+
+<div class="page-header page-header-flex mb-3">
+    <div>
+        <h1 class="page-header-title">Receipt — @Model.ReceiptDate.ToString("MMM d, yyyy")</h1>
+        <p class="page-header-subtitle" id="totalSummary">Total: @Model.TotalPrice.ToString("C") (incl. tax)</p>
+    </div>
+    <div class="page-header-actions">
+        <a asp-controller="Receipts" asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to Receipts</a>
+        <form method="post" asp-controller="Receipts" asp-action="DeleteReceipt" onsubmit="return confirm('Delete this entire receipt? Every item on it will be unassigned first. This cannot be undone.');">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button type="submit" class="btn btn-outline-danger btn-sm">Delete Receipt</button>
+        </form>
+    </div>
+</div>
+
+<div id="alertRegion" class="alert d-none" role="alert"></div>
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Receipt details</div>
+        <div class="d-flex gap-2 align-items-end flex-wrap">
+            <div>
+                <label class="form-label small mb-1">Date</label>
+                <input type="date" id="headerDate" class="form-control form-control-sm" value="@Model.ReceiptDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div>
+                <label class="form-label small mb-1">Total price (incl. tax)</label>
+                <div class="input-group input-group-sm" style="max-width:160px;">
+                    <span class="input-group-text">$</span>
+                    <input type="number" id="headerTotal" class="form-control" step="0.01" min="0" value="@Model.TotalPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" />
+                </div>
+            </div>
+            <button type="button" id="saveHeaderBtn" class="btn btn-sm btn-primary">Save</button>
+            <span class="small text-muted">Changing date/total recalculates the tax split — and any already-assigned item's purchase cost — for every item below.</span>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3 pick-panel">
+    <div class="card-body pb-2">
+        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+            <div class="small fw-semibold text-uppercase text-muted">Items</div>
+            <div class="small text-muted" id="pickCount"></div>
+        </div>
+        <div class="pick-search px-0 pt-0">
+            <input type="search" id="pickSearch" class="form-control form-control-sm" placeholder="Search name, item ID, barcode" aria-label="Search items" autocomplete="off" />
+            <span class="pick-hint">Click an item to put it on the next line you add.</span>
+        </div>
+        <div class="pick-strip px-0" id="pickStrip" role="listbox" aria-label="Items without a receipt"></div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3" id="addItemCard">
+    <div class="card-body">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">Add item <span id="addItemPicked" class="pick-picked d-none"></span></div>
+        <div class="d-flex gap-2 align-items-end flex-wrap">
+            <div>
+                <label class="form-label small mb-1">Pre-tax price</label>
+                <div class="input-group input-group-sm" style="max-width:140px;">
+                    <span class="input-group-text">$</span>
+                    <input type="number" id="newItemPrice" class="form-control" step="0.01" min="0" />
+                </div>
+            </div>
+            <div>
+                <label class="form-label small mb-1">Name (optional)</label>
+                <input type="text" id="newItemName" class="form-control form-control-sm" style="min-width:200px;" placeholder="e.g. Fleetguard filter" />
+            </div>
+            <button type="button" id="addItemBtn" class="btn btn-sm btn-primary">Add Item</button>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-2">
+    <span class="text-muted small" id="itemCountLabel"></span>
+</div>
+
+<div id="itemsContainer" class="d-flex flex-column gap-2"></div>
+
+<div id="emptyItemsState" class="d-none">
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "tag",
+        Title = "No items on this receipt yet",
+        Message = "Add an item above, then assign it to something in your inventory."
+    })" />
+</div>
+
+@section Scripts {
+    <script>
+        window.receiptState = {
+            receiptId: "@Model.Id",
+            items: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.Select(i => new {
+                id = i.Id,
+                name = i.Name,
+                preTaxPrice = i.PreTaxPrice,
+                allocatedTotalPrice = i.AllocatedTotalPrice,
+                assignedListingId = i.AssignedListingId,
+                assignedItemId = i.AssignedItemId,
+                assignedTitle = i.AssignedTitle,
+                assignedCoverPhotoUrl = i.AssignedCoverPhotoUrl,
+                assignedBarcode = i.AssignedBarcode
+            }))),
+            quickPickItems: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QuickPickItems.Select(q => new {
+                listingId = q.ListingId,
+                itemId = q.ItemId,
+                title = q.Title,
+                coverPhotoUrl = q.CoverPhotoUrl,
+                barcode = q.Barcode
+            }))),
+            unassignedItems: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.UnassignedItems.Select(q => new {
+                listingId = q.ListingId,
+                itemId = q.ItemId,
+                title = q.Title,
+                coverPhotoUrl = q.CoverPhotoUrl,
+                barcode = q.Barcode
+            })))
+        };
+    </script>
+    <script src="~/js/receipts.js" asp-append-version="true"></script>
+}

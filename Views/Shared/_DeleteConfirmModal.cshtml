@@ -1,0 +1,31 @@
+@model inventory_management.Models.DeleteConfirmModalViewModel
+
+@* Trigger buttons: data-bs-toggle="modal" data-bs-target="#@Model.ModalId" data-id="@@x.Id" data-name="@@x.Name" *@
+@* Wire on the page with: InventoryDeleteModal.wire("@Model.ModalId", { idField: "id", nameField: "name" }); *@
+
+<div class="modal fade" id="@Model.ModalId" tabindex="-1" aria-labelledby="@(Model.ModalId)Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="@(Model.ModalId)Label">@Model.Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <strong id="@(Model.ModalId)Name"></strong>?
+                This @Model.ItemNoun cannot be recovered.
+                @if (!string.IsNullOrWhiteSpace(Model.Warning))
+                {
+                    <div class="alert alert-warning py-2 px-3 small mt-3 mb-0">@Model.Warning</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="@(Model.ModalId)Form" method="post" action="@Model.DeleteActionUrl">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="@(Model.ModalId)Id" name="@Model.IdFieldName" value="" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

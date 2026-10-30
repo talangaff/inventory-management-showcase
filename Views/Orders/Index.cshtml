@@ -1,0 +1,267 @@
+@model inventory_management.Models.OrdersIndexViewModel
+
+@{
+    ViewData["Title"] = Model.PageTitle;
+}
+
+<div class="page-header page-header-flex mb-3">
+    <div>
+        <h1 class="page-header-title">
+            @Model.PageTitle
+            @if (Model.Orders.Count > 0)
+            {
+                <span class="text-muted fw-normal ms-1" style="font-size:0.85em;">(@Model.Orders.Count)</span>
+            }
+            <span id="syncIndicator" class="badge text-bg-secondary ms-2 fw-normal d-none" style="font-size:0.65em;">Syncing…</span>
+        </h1>
+        <p class="page-header-subtitle">
+            @(Model.IsReadyToShipPage ? "Orders ready to pack and ship." : "Recent eBay orders and where each item is stored.")
+        </p>
+    </div>
+</div>
+
+<script>
+    const ordersIsConnected = @Html.Raw(Model.IsConnected ? "true" : "false");
+
+    async function triggerOrdersSync() {
+        const indicator = document.getElementById('syncIndicator');
+        if (indicator) indicator.classList.remove('d-none');
+        try {
+            const resp = await fetch(appUrl('/Orders/TriggerSync'));
+            const data = await resp.json();
+            if (data.ok) {
+                window.location.reload();
+            }
+        } catch {
+            // silent fail — cached data is still shown
+        } finally {
+            if (indicator) indicator.classList.add('d-none');
+        }
+    }
+
+    if (ordersIsConnected) {
+        triggerOrdersSync();
+    }
+</script>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <div class="alert alert-warning mb-3">@Model.ErrorMessage</div>
+}
+else if (!Model.Orders.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "box",
+        Title = "No orders found",
+        Message = "Orders will show up here once they come in from eBay."
+    })" />
+}
+else
+{
+    var colCount = 5;
+    var currentAction = Model.IsReadyToShipPage ? "ReadyToShip" : "Recent";
+    var sortOptions = new[] {
+        ("date_desc", "Date ↓"),
+        ("date_asc", "Date ↑"),
+        ("title", "Title"),
+    };
+    // Model.Orders already comes in the requested sort order from the controller. Group
+    // adjacent-in-time orders from the same buyer together (for the "N orders from this
+    // buyer" banner) without breaking that order — groups are ordered by each group's most
+    // recent order, matching direction with the active sort, instead of by order count/name
+    // (which used to silently override the "Date" sort with an unrelated one).
+    var useBuyerGrouping = Model.Sort == "date_desc" || Model.Sort == "date_asc";
+    var buyerGroups = useBuyerGrouping
+        ? (Model.Sort == "date_asc"
+            ? Model.Orders.GroupBy(o => o.BuyerName)
+                .OrderBy(g => g.Min(o => o.OrderCreatedAtUtc ?? DateTime.MaxValue))
+                .ToList()
+            : Model.Orders.GroupBy(o => o.BuyerName)
+                .OrderByDescending(g => g.Max(o => o.OrderCreatedAtUtc ?? DateTime.MinValue))
+                .ToList())
+        : null;
+
+    <div class="d-flex justify-content-end gap-1 mb-3 flex-wrap">
+        @foreach (var (sortVal, sortLabel) in sortOptions)
+        {
+            var isActive = Model.Sort == sortVal;
+            <a href="@Url.Action(currentAction, new { sort = sortVal })"
+               class="btn btn-sm @(isActive ? "btn-secondary" : "btn-outline-secondary")">@sortLabel</a>
+        }
+    </div>
+
+    <div class="table-responsive table-card">
+        <table class="table align-middle table-striped">
+            <thead>
+                <tr>
+                    <th>Item Photo</th>
+                    <th>Item Name</th>
+                    <th>Buyer Name</th>
+                    <th>Order Date</th>
+                    <th>Storage Location</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (useBuyerGrouping && buyerGroups != null)
+            {
+            @foreach (var group in buyerGroups)
+            {
+                var isMulti = group.Count() > 1;
+                @if (isMulti)
+                {
+                    <tr class="table-warning">
+                        <td colspan="@colCount" class="py-2 px-3">
+                            <span class="fw-semibold">@group.Key</span>
+                            <span class="badge bg-warning text-dark ms-2">@group.Count() orders from this buyer</span>
+                        </td>
+                    </tr>
+                }
+                @foreach (var order in group)
+                {
+                    <tr>
+                        <td style="width: 88px;">
+                            @if (!string.IsNullOrWhiteSpace(order.ItemPhotoUrl))
+                            {
+                                <img src="@order.ItemPhotoUrl" alt="Photo for @order.ItemName" style="width:64px;height:64px;object-fit:cover;border-radius:6px;" />
+                            }
+                            else
+                            {
+                                <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="width:64px;height:64px;font-size:12px;">
+                                    No image
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@order.ItemName</div>
+                            <div class="small text-muted">
+                                Order ID:
+                                @if (Model.IsReadyToShipPage)
+                                {
+                                    <a href="https://ebay.com/lbr/go?t=@order.OrderId" target="_blank" rel="noopener noreferrer" class="font-monospace">@order.OrderId</a>
+                                }
+                                else
+                                {
+                                    @order.OrderId
+                                }
+                            </div>
+                            <div class="d-flex gap-2 mt-2 flex-wrap">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-dark orders-print-barcode-btn"
+                                        data-barcode="@order.Barcode"
+                                        data-item-title="@order.ItemName">
+                                    Print QR Code
+                                </button>
+                            </div>
+                        </td>
+                        <td>@order.BuyerName</td>
+                        <td>
+                            @if (order.OrderCreatedAtUtc.HasValue)
+                            {
+                                <span>@order.OrderCreatedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy")</span>
+                            }
+                        </td>
+                        <td>
+                            @if (order.UnsoldUnitOptions.Any())
+                            {
+                                @* eBay never tells us which physical unit sold — pick which one
+                                   shipped so shelf/box/storage-unit tracking stays accurate. *@
+                                <div class="unit-pick-form" data-item-id="@order.ItemId">
+                                    <div class="small text-warning mb-1">Which one shipped?</div>
+                                    <select class="form-select form-select-sm unit-pick-select">
+                                        @foreach (var opt in order.UnsoldUnitOptions)
+                                        {
+                                            <option value="@opt.UnitId">@opt.LocationDisplay (@opt.Barcode)</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-warning mt-1 unit-pick-confirm-btn">Confirm</button>
+                                </div>
+                            }
+                            else
+                            {
+                                @(string.IsNullOrWhiteSpace(order.StorageLocationDisplay) ? "No Location" : order.StorageLocationDisplay)
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            }
+            else
+            {
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td style="width: 88px;">
+                            @if (!string.IsNullOrWhiteSpace(order.ItemPhotoUrl))
+                            {
+                                <img src="@order.ItemPhotoUrl" alt="Photo for @order.ItemName" style="width:64px;height:64px;object-fit:cover;border-radius:6px;" />
+                            }
+                            else
+                            {
+                                <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="width:64px;height:64px;font-size:12px;">
+                                    No image
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@order.ItemName</div>
+                            <div class="small text-muted">
+                                Order ID:
+                                @if (Model.IsReadyToShipPage)
+                                {
+                                    <a href="https://ebay.com/lbr/go?t=@order.OrderId" target="_blank" rel="noopener noreferrer" class="font-monospace">@order.OrderId</a>
+                                }
+                                else
+                                {
+                                    @order.OrderId
+                                }
+                            </div>
+                            <div class="d-flex gap-2 mt-2 flex-wrap">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-dark orders-print-barcode-btn"
+                                        data-barcode="@order.Barcode"
+                                        data-item-title="@order.ItemName">
+                                    Print QR Code
+                                </button>
+                            </div>
+                        </td>
+                        <td>@order.BuyerName</td>
+                        <td>
+                            @if (order.OrderCreatedAtUtc.HasValue)
+                            {
+                                <span>@order.OrderCreatedAtUtc.Value.ToLocalTime().ToString("MMM d, yyyy")</span>
+                            }
+                        </td>
+                        <td>
+                            @if (order.UnsoldUnitOptions.Any())
+                            {
+                                @* eBay never tells us which physical unit sold — pick which one
+                                   shipped so shelf/box/storage-unit tracking stays accurate. *@
+                                <div class="unit-pick-form" data-item-id="@order.ItemId">
+                                    <div class="small text-warning mb-1">Which one shipped?</div>
+                                    <select class="form-select form-select-sm unit-pick-select">
+                                        @foreach (var opt in order.UnsoldUnitOptions)
+                                        {
+                                            <option value="@opt.UnitId">@opt.LocationDisplay (@opt.Barcode)</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-warning mt-1 unit-pick-confirm-btn">Confirm</button>
+                                </div>
+                            }
+                            else
+                            {
+                                @(string.IsNullOrWhiteSpace(order.StorageLocationDisplay) ? "No Location" : order.StorageLocationDisplay)
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <script src="~/js/barcode-print.js" asp-append-version="true"></script>
+    <script src="~/js/orders-index.js" asp-append-version="true"></script>
+}

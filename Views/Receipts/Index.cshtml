@@ -1,0 +1,93 @@
+@model inventory_management.Models.ReceiptsIndexViewModel
+@{
+    ViewData["Title"] = "Receipts";
+}
+
+<div class="page-header page-header-flex mb-4">
+    <div>
+        <h1 class="page-header-title">Receipts</h1>
+        <p class="page-header-subtitle">Track purchase receipts and link each line item to what you bought in inventory.</p>
+    </div>
+</div>
+
+@if (ViewBag.SuccessMessage is string successMsg)
+{
+    <div class="alert alert-success">@successMsg</div>
+}
+@if (ViewBag.ErrorMessage is string errorMsg)
+{
+    <div class="alert alert-danger">@errorMsg</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="small fw-semibold text-uppercase text-muted mb-2">New receipt</div>
+        <form asp-controller="Receipts" asp-action="Create" method="post" class="d-flex gap-2 align-items-end flex-wrap">
+            @Html.AntiForgeryToken()
+            <div>
+                <label class="form-label small mb-1">Date</label>
+                <input type="date" name="receiptDate" class="form-control form-control-sm" value="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" required />
+            </div>
+            <div>
+                <label class="form-label small mb-1">Total price (incl. tax)</label>
+                <div class="input-group input-group-sm" style="max-width:160px;">
+                    <span class="input-group-text">$</span>
+                    <input type="number" name="totalPrice" class="form-control" step="0.01" min="0" required />
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Add Receipt</button>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Receipts.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel {
+        Icon = "tag",
+        Title = "No receipts yet",
+        Message = "Add a receipt above, then link its items to your inventory."
+    })" />
+}
+else
+{
+    <div class="table-responsive table-card">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Total (incl. tax)</th>
+                    <th>Items</th>
+                    <th>Unassigned</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Receipts)
+                {
+                    <tr>
+                        <td>@r.ReceiptDate.ToString("MMM d, yyyy")</td>
+                        <td>@r.TotalPrice.ToString("C")</td>
+                        <td>@r.ItemCount</td>
+                        <td>
+                            @if (r.UnassignedCount > 0)
+                            {
+                                <span class="badge text-bg-warning">@r.UnassignedCount unassigned</span>
+                            }
+                            else if (r.ItemCount > 0)
+                            {
+                                <span class="badge text-bg-success">All assigned</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No items yet</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-controller="Receipts" asp-action="Details" asp-route-id="@r.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

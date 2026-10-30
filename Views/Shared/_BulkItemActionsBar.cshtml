@@ -1,0 +1,48 @@
+@model inventory_management.Models.BulkItemActionsConfigViewModel
+@{
+    // Shared bulk-select toolbar for any page listing items with class="bulk-item-checkbox"
+    // (data-item-id="...") wrapped in an element with class="bulk-select-item". Drives
+    // /Inventory/BulkAssignLocation, /Inventory/BulkAssignBox, /Inventory/BulkRemoveLocation.
+    // See wwwroot/js/bulk-item-actions.js.
+}
+<div id="bulkDetailConfig" class="d-none"
+    data-shelf-units="@System.Text.Json.JsonSerializer.Serialize(Model.ShelfUnits.Select(u => new { u.Id, u.Identifier, u.ShelfCount, u.BarcodePrefix }))"
+    data-boxes="@System.Text.Json.JsonSerializer.Serialize(Model.Boxes.Select(b => new { b.Id, b.BoxIdentifier, b.BoxBarcode }))"></div>
+
+<form id="bulkDetailAntiForgeryForm" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div id="bulkDetailActionBar" class="d-none" style="position:fixed;bottom:0;left:0;right:0;z-index:1050;background:var(--paper);border-top:1px solid var(--clr-border);box-shadow:0 -2px 8px rgba(0,0,0,.12);padding:10px 12px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+        <strong id="bulkDetailBarCount" class="text-nowrap small">0 selected</strong>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDetailCancelBtn">Cancel</button>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex align-items-end gap-2 flex-wrap">
+            <div class="d-flex gap-1 flex-wrap">
+                <div>
+                    <label class="form-label small mb-1">Shelving Unit</label>
+                    <select id="bulkDetailShelfUnitSelect" class="form-select form-select-sm" style="min-width:120px;max-width:180px;"></select>
+                </div>
+                <div>
+                    <label class="form-label small mb-1">Shelf</label>
+                    <select id="bulkDetailShelfNumberSelect" class="form-select form-select-sm" style="min-width:60px;max-width:80px;"></select>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-success align-self-end" id="bulkDetailAssignShelfBtn">Assign Shelf</button>
+        </div>
+
+        <div class="d-flex align-items-end gap-2">
+            <div>
+                <label class="form-label small mb-1">Box</label>
+                <select id="bulkDetailBoxSelect" class="form-select form-select-sm" style="min-width:120px;max-width:180px;"></select>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary align-self-end" id="bulkDetailAssignBoxBtn">Assign Box</button>
+        </div>
+
+        <div class="d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-outline-danger" id="bulkDetailRemoveLocationBtn">Remove Location</button>
+        </div>
+    </div>
+</div>

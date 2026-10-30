@@ -1,0 +1,256 @@
+@model inventory_management.Models.ShelfDetailsViewModel
+@{
+    ViewData["Title"] = $"Shelf Unit {Model.Identifier}";
+    var shelfIndex = 0;
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+    <h1 class="h3 mb-0">Shelf Unit @Model.Identifier</h1>
+    <a asp-controller="Shelf" asp-action="Index" class="btn btn-outline-secondary btn-sm flex-shrink-0">Back to Shelving Units</a>
+</div>
+
+<div class="mb-3">
+    <input id="searchInput" type="search" class="form-control" placeholder="Search items by title or item ID..." />
+</div>
+
+@{
+    var totalItems = Model.Shelves.Sum(s => s.DirectItems.Count + s.Boxes.Sum(b => b.Items.Count));
+}
+
+@if (totalItems == 0)
+{
+    <div class="alert alert-info">No items are stored on this shelf unit.</div>
+}
+else
+{
+    <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" id="selectAllCheckbox" />
+        <label class="form-check-label small" for="selectAllCheckbox">Select all visible</label>
+    </div>
+}
+
+@foreach (var shelf in Model.Shelves)
+{
+    var shelfItemCount = shelf.DirectItems.Count + shelf.Boxes.Sum(b => b.Items.Count);
+    var shelfCollapseId = $"shelfCollapse{shelfIndex}";
+    var boxIndex = 0;
+    var isActive = shelf.Status == inventory_management.Models.ShelfStatus.ActiveInventory;
+    var (slotStatusLabel, slotStatusClass) = shelf.Status switch
+    {
+        inventory_management.Models.ShelfStatus.Unlisted => ("Unlisted", "bg-secondary"),
+        inventory_management.Models.ShelfStatus.NeedsSorted => ("Needs Sorted", "bg-warning text-dark"),
+        _ => ("Active Inventory", "bg-success")
+    };
+    <div class="card mb-3">
+        @if (isActive)
+        {
+            <div class="card-header d-flex justify-content-between align-items-center"
+                 role="button" data-bs-toggle="collapse" data-bs-target="#@shelfCollapseId"
+                 aria-expanded="true" aria-controls="@shelfCollapseId">
+                <h5 class="mb-0">
+                    <span class="collapse-chevron me-1">&#9660;</span>
+                    Shelf @Model.Identifier-@shelf.ShelfNumber
+                    <span class="badge @slotStatusClass ms-2 fs-6 fw-normal">@slotStatusLabel</span>
+                </h5>
+                <span class="badge bg-secondary">@shelfItemCount item@(shelfItemCount != 1 ? "s" : "")</span>
+            </div>
+        }
+        else
+        {
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    Shelf @Model.Identifier-@shelf.ShelfNumber
+                    <span class="badge @slotStatusClass ms-2 fs-6 fw-normal">@slotStatusLabel</span>
+                </h5>
+            </div>
+        }
+        <div class="card-body py-2 border-bottom bg-light-subtle">
+            <form class="d-flex align-items-center gap-2 flex-wrap shelf-status-form"
+                  data-shelf-unit-id="@Model.Id" data-shelf-number="@shelf.ShelfNumber">
+                <label class="small text-muted mb-0">Shelf Type</label>
+                <select class="form-select form-select-sm shelf-status-select" style="max-width:200px;">
+                    <option value="0" selected="@(shelf.Status == inventory_management.Models.ShelfStatus.ActiveInventory)">Active Inventory</option>
+                    <option value="1" selected="@(shelf.Status == inventory_management.Models.ShelfStatus.Unlisted)">Unlisted</option>
+                    <option value="2" selected="@(shelf.Status == inventory_management.Models.ShelfStatus.NeedsSorted)">Needs Sorted</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                <span class="small text-muted shelf-status-save-status"></span>
+            </form>
+        </div>
+        @if (!isActive)
+        {
+            <div class="card-body">
+                <div class="text-muted small">No items — a shelf can only hold items while it's Active Inventory.</div>
+            </div>
+        }
+        else
+        {
+        <div id="@shelfCollapseId" class="collapse show">
+            <div class="card-body">
+                @if (shelf.DirectItems.Count == 0 && shelf.Boxes.Count == 0)
+                {
+                    <div class="text-muted">No items on this shelf.</div>
+                }
+
+                @if (shelf.DirectItems.Any())
+                {
+                    <div class="row g-2">
+                        @foreach (var item in shelf.DirectItems)
+                        {
+                            <div class="col-12 storage-item bulk-select-item" data-search="@($"{item.Title} {item.ItemId}".ToLowerInvariant())">
+                                <div class="d-flex flex-wrap align-items-center gap-2 p-2 border rounded">
+                                    <input type="checkbox" class="form-check-input bulk-item-checkbox flex-shrink-0" data-item-id="@item.ItemId" />
+                                    @if (!string.IsNullOrEmpty(item.CoverPhotoUrl))
+                                    {
+                                        <img src="@item.CoverPhotoUrl" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width:56px;height:56px;background:var(--clr-surface-2);border-radius:4px;flex-shrink:0;" class="d-flex align-items-center justify-content-center">
+                                            <span class="text-muted small">No img</span>
+                                        </div>
+                                    }
+                                    <div style="min-width:0;flex:1 1 150px;">
+                                        <a asp-controller="Inventory" asp-action="Details" asp-route-id="@item.ItemId" class="fw-semibold text-decoration-none text-dark" style="word-break:break-word;">@item.Title</a>
+                                        <div class="small text-muted"><span class="font-monospace">@item.ItemId</span></div>
+                                    </div>
+                                    <form asp-controller="Shelf" asp-action="RemoveItem" method="post" class="ms-auto flex-shrink-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="shelfId" value="@Model.Id" />
+                                        <input type="hidden" name="itemId" value="@item.ItemId" />
+                                        <input type="hidden" name="source" value="shelf" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this item from shelf?');">Remove</button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @foreach (var box in shelf.Boxes)
+                {
+                    var boxCollapseId = $"boxCollapse{shelfIndex}_{boxIndex}";
+                    <div class="mt-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary collapse-chevron-box" role="button"
+                                  data-bs-toggle="collapse" data-bs-target="#@boxCollapseId"
+                                  aria-expanded="true" aria-controls="@boxCollapseId">
+                                <span class="collapse-chevron me-1">&#9660;</span> Box @box.BoxIdentifier
+                            </span>
+                            <span class="small text-muted">@box.Items.Count item@(box.Items.Count != 1 ? "s" : "")</span>
+                            <a asp-controller="Box" asp-action="Details" asp-route-id="@box.BoxId" class="btn btn-sm btn-outline-primary ms-auto">View Box</a>
+                        </div>
+                        <div id="@boxCollapseId" class="collapse show">
+                            @if (box.Items.Any())
+                            {
+                                <div class="row g-2 ms-3">
+                                    @foreach (var item in box.Items)
+                                    {
+                                        <div class="col-12 storage-item bulk-select-item" data-search="@($"{item.Title} {item.ItemId}".ToLowerInvariant())">
+                                            <div class="d-flex flex-wrap align-items-center gap-2 p-2 border rounded">
+                                                <input type="checkbox" class="form-check-input bulk-item-checkbox flex-shrink-0" data-item-id="@item.ItemId" />
+                                                @if (!string.IsNullOrEmpty(item.CoverPhotoUrl))
+                                                {
+                                                    <img src="@item.CoverPhotoUrl" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
+                                                }
+                                                else
+                                                {
+                                                    <div style="width:56px;height:56px;background:var(--clr-surface-2);border-radius:4px;flex-shrink:0;" class="d-flex align-items-center justify-content-center">
+                                                        <span class="text-muted small">No img</span>
+                                                    </div>
+                                                }
+                                                <div style="min-width:0;flex:1 1 150px;">
+                                                    <a asp-controller="Inventory" asp-action="Details" asp-route-id="@item.ItemId" class="fw-semibold text-decoration-none text-dark" style="word-break:break-word;">@item.Title</a>
+                                                    <div class="small text-muted"><span class="font-monospace">@item.ItemId</span></div>
+                                                </div>
+                                                <form asp-controller="Shelf" asp-action="RemoveItem" method="post" class="ms-auto flex-shrink-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="shelfId" value="@Model.Id" />
+                                                    <input type="hidden" name="itemId" value="@item.ItemId" />
+                                                    <input type="hidden" name="source" value="box" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this item from box?');">Remove</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="ms-3 text-muted small">No items in this box.</div>
+                            }
+                        </div>
+                    </div>
+                    boxIndex++;
+                }
+            </div>
+        </div>
+        }
+    </div>
+    shelfIndex++;
+}
+
+<partial name="_BulkItemActionsBar" model="(inventory_management.Models.BulkItemActionsConfigViewModel)ViewBag.BulkConfig" />
+
+@section Scripts {
+    <script src="~/js/bulk-item-actions.js" asp-append-version="true"></script>
+    <script>
+        const searchInput = document.getElementById("searchInput");
+        const items = Array.from(document.querySelectorAll(".storage-item"));
+
+        if (searchInput) {
+            searchInput.addEventListener("input", () => {
+                const term = searchInput.value.trim().toLowerCase();
+                items.forEach((el) => {
+                    const searchable = el.dataset.search || "";
+                    const matches = !term || searchable.includes(term);
+                    el.classList.toggle("d-none", !matches);
+                });
+            });
+        }
+
+        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener("change", () => {
+                const checked = selectAllCheckbox.checked;
+                document.querySelectorAll(".storage-item:not(.d-none) .bulk-item-checkbox").forEach((cb) => {
+                    cb.checked = checked;
+                    cb.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+            });
+        }
+
+        document.querySelectorAll(".shelf-status-form").forEach((form) => {
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const saveBtn = form.querySelector("button[type='submit']");
+                const statusEl = form.querySelector(".shelf-status-save-status");
+                const select = form.querySelector(".shelf-status-select");
+                saveBtn.disabled = true;
+                if (statusEl) statusEl.textContent = "Saving…";
+                try {
+                    const response = await fetch(appUrl("/Home/UpdateShelfSlotStatus"), {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                        body: JSON.stringify({
+                            shelfUnitId: form.dataset.shelfUnitId,
+                            shelfNumber: Number(form.dataset.shelfNumber),
+                            status: Number(select.value)
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.reload();
+                        return;
+                    }
+                    if (statusEl) statusEl.textContent = result.message || "Failed.";
+                } catch (error) {
+                    if (statusEl) statusEl.textContent = "Save failed.";
+                    console.error(error);
+                } finally {
+                    saveBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+}
